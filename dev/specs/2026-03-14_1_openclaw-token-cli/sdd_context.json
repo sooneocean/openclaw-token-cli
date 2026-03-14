@@ -5,13 +5,62 @@
     "spec_mode": "full_spec",
     "spec_folder": "dev/specs/2026-03-14_1_openclaw-token-cli",
     "work_type": "new_feature",
-    "status": "in_progress",
+    "status": "completed",
     "execution_mode": "autopilot",
     "current_stage": "S7",
     "started_at": "2026-03-14T21:15:00+08:00",
-    "last_updated": "2026-03-14T23:00:00+08:00",
-    "last_updated_by": "orchestrator",
+    "completed_at": "2026-03-14T23:30:00+08:00",
+    "last_updated": "2026-03-14T23:30:00+08:00",
+    "last_updated_by": "git-operator",
     "failed_approaches": [],
+    "lessons_learned": {
+      "what_went_well": [
+        "Multi-agent parallel dispatch significantly accelerated Wave 1 infra implementation",
+        "Linter auto-scaffolding complemented agent output, reducing manual coordination",
+        "Mock-first design enabled full CLI testing without real backend",
+        "分層架構（Commands → Services → API Client）清晰，S4 實作過程沒有跨層污染",
+        "S2 Spec Review 在早期攔截到 MockStore stateless 策略問題，避免 S4 大量返工",
+        "18 個任務分 6 波次執行，波次間依賴明確，S4 推進流暢",
+        "91 個測試一次全過、23/23 AC 覆蓋率 100%，S6 零缺陷"
+      ],
+      "what_went_wrong": [
+        "Demo management key contained non-hex chars, causing mock auth validation failure",
+        "Axios request interceptors run LIFO, causing auth header missing in mock adapter",
+        "Auth/Credits mock handlers used global singleton instead of injected store",
+        "S5 Code Review 發現 redactSecret 在兩個模組重複定義，顯示 S4 邊界案例覆蓋不足"
+      ],
+      "new_pitfalls": [
+        {
+          "id": "P-CLI-001",
+          "tag": "cli/mock",
+          "title": "sk-mgmt- token format requires strict hex UUID",
+          "description": "Do not use mnemonic chars like 'demo' in management key — mock auth validation will fail.",
+          "mitigation": "S3 implementation plan must specify exact token format and provide conforming fixture values."
+        },
+        {
+          "id": "P-CLI-002",
+          "tag": "cli/axios",
+          "title": "Axios request interceptors execute in reverse registration order (LIFO)",
+          "description": "Setting auth headers in a separate interceptor registered after the mock adapter interceptor means the auth header is set before mock adapter runs, causing it to be missing.",
+          "mitigation": "Set auth headers in the same interceptor that reads them, or explicitly account for LIFO ordering."
+        },
+        {
+          "id": "P-CLI-003",
+          "tag": "cli/testing",
+          "title": "Mock handlers must use router-injected store, not module-level singleton",
+          "description": "Module-level singleton store breaks test isolation — each test suite shares state across tests.",
+          "mitigation": "Pass store as a parameter to mock handler factory functions; reset per test in beforeEach."
+        },
+        {
+          "id": "P-CLI-004",
+          "tag": "cli/architecture",
+          "title": "工具函式跨模組重複定義",
+          "description": "Greenfield CLI 專案容易在多個模組中各自定義相同工具函式，S4 完成後 S5 才發現。",
+          "mitigation": "S3 實作計畫中對每個 utils 函式明確標記 owner 模組；S5 Code Review 必須掃描同名 export。"
+        }
+      ],
+      "captured_at": "2026-03-14T23:30:00+08:00"
+    },
     "stages": {
       "s0": {
         "status": "completed",
@@ -219,42 +268,29 @@
       },
       "s7": {
         "status": "completed",
-        "agents": ["git-operator"],
-        "completed_at": "2026-03-14T23:10:00+08:00",
+        "agent": "git-operator",
+        "started_at": "2026-03-14T23:20:00+08:00",
+        "completed_at": "2026-03-14T23:30:00+08:00",
         "output": {
-          "commit_branch": "main",
+          "commit_hash": "81364fc",
+          "branch": "main",
           "changes": {
-            "new_files": 47,
-            "modified_files": 0,
-            "total_lines_added": 3406
+            "cli_commands": ["src/commands/auth.ts", "src/commands/credits.ts", "src/commands/integrate.ts", "src/commands/keys.ts"],
+            "services": ["src/services/auth.service.ts", "src/services/credits.service.ts", "src/services/integrate.service.ts", "src/services/keys.service.ts"],
+            "api_client": ["src/api/client.ts", "src/api/endpoints.ts", "src/api/types.ts"],
+            "mock_backend": ["src/mock/handler.ts", "src/mock/index.ts", "src/mock/store.ts", "src/mock/handlers/auth.mock.ts", "src/mock/handlers/credits.mock.ts", "src/mock/handlers/keys.mock.ts"],
+            "config_infra": ["src/config/manager.ts", "src/config/paths.ts", "src/config/schema.ts", "src/errors/api.ts", "src/errors/base.ts", "src/errors/messages.ts", "src/output/formatter.ts", "src/output/spinner.ts", "src/output/table.ts", "src/utils/auth-guard.ts", "src/utils/fs.ts", "src/utils/redact.ts", "src/utils/validation.ts", "src/index.ts"],
+            "tests": ["tests/integration/auth.test.ts", "tests/integration/credits.test.ts", "tests/integration/json-output.test.ts", "tests/integration/keys.test.ts", "tests/integration/smoke.test.ts", "tests/unit/config/manager.test.ts", "tests/unit/errors/api.test.ts", "tests/unit/mock/handlers/auth.mock.test.ts", "tests/unit/mock/handlers/credits.mock.test.ts", "tests/unit/mock/handlers/keys.mock.test.ts", "tests/unit/mock/store.test.ts", "tests/unit/output/formatter.test.ts", "tests/unit/services/auth.service.test.ts", "tests/unit/utils/redact.test.ts", "tests/unit/utils/validation.test.ts"],
+            "specs": ["dev/specs/2026-03-14_1_openclaw-token-cli/s0_brief_spec.md", "dev/specs/2026-03-14_1_openclaw-token-cli/s1_api_spec.md", "dev/specs/2026-03-14_1_openclaw-token-cli/s1_dev_spec.md", "dev/specs/2026-03-14_1_openclaw-token-cli/s2_review_report.md", "dev/specs/2026-03-14_1_openclaw-token-cli/s3_implementation_plan.md"]
           },
           "stats": {
-            "source_files": 30,
-            "test_files": 17,
-            "config_files": 5,
-            "spec_files": 6
+            "total_source_files": 31,
+            "total_test_files": 15,
+            "tests_passed": 91,
+            "ac_coverage": "23/23"
           }
         }
       }
-    },
-    "status": "completed",
-    "completed_at": "2026-03-14T23:10:00+08:00",
-    "lessons_learned": {
-      "what_went_well": [
-        "Multi-agent parallel dispatch significantly accelerated Wave 1 infra implementation",
-        "Linter auto-scaffolding complemented agent output, reducing manual coordination",
-        "Mock-first design enabled full CLI testing without real backend"
-      ],
-      "what_went_wrong": [
-        "Demo management key contained non-hex chars, causing mock auth validation failure",
-        "Axios request interceptors run LIFO, causing auth header missing in mock adapter",
-        "Auth/Credits mock handlers used global singleton instead of injected store"
-      ],
-      "new_pitfalls": [
-        "sk-mgmt- token format requires strict hex UUID — do not use mnemonic chars like 'demo'",
-        "Axios request interceptors execute in reverse registration order (LIFO) — set auth headers in the same interceptor that reads them",
-        "Mock handlers must use router-injected store parameter, not module-level singleton, for test isolation"
-      ]
     }
   }
 }
