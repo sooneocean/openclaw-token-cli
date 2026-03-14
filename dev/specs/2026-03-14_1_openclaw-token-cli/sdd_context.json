@@ -1,0 +1,260 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "openclaw-token-cli",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-14_1_openclaw-token-cli",
+    "work_type": "new_feature",
+    "status": "in_progress",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-14T21:15:00+08:00",
+    "last_updated": "2026-03-14T23:00:00+08:00",
+    "last_updated_by": "orchestrator",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "completed_at": "2026-03-14T21:30:00+08:00",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-14_1_openclaw-token-cli/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "建立 credit-based API proxy CLI 客戶端，讓 OpenClaw 用戶預購 credits、取得 provisioned API key 作為 agent fallback token provider",
+          "pain_points": [
+            "Agent 所有 API key 額度用完時完全停擺",
+            "缺乏統一的 credit pool 作為最後一道 fallback 防線",
+            "補充 API credits 需分別到各 provider 平台操作"
+          ],
+          "goal": "提供 CLI 客戶端管理 credits、provisioning API keys，一鍵整合 OpenClaw fallback chain",
+          "success_criteria": [
+            "可註冊/登入帳戶並管理 Management Key",
+            "可購買 credits 並設定 auto top-up",
+            "可建立帶 credit limit 的 provisioned API key",
+            "可一鍵注入 OpenClaw fallback chain",
+            "所有 API 錯誤有友善訊息"
+          ],
+          "scope_in": [
+            "FA-A: 帳戶註冊/登入、Management Key 管理",
+            "FA-B: Credits 購買、餘額查詢、auto top-up、交易紀錄",
+            "FA-C: Provisioned API key CRUD + credit limit",
+            "FA-D: OpenClaw fallback chain 整合"
+          ],
+          "scope_out": [
+            "Proxy 服務後端（用 mock）",
+            "真實付款整合（Stripe）",
+            "Web Dashboard",
+            "模型定價管理",
+            "Agent runtime 修改"
+          ],
+          "constraints": [
+            "Greenfield 專案",
+            "MVP 用 mock backend",
+            "Node.js + TypeScript + Commander.js",
+            "API 設計參考 OpenRouter"
+          ],
+          "functional_areas": [
+            {
+              "id": "FA-A",
+              "name": "帳戶與認證",
+              "description": "註冊/登入帳戶、Management Key 管理、config 持久化",
+              "independence": "high"
+            },
+            {
+              "id": "FA-B",
+              "name": "Credits 管理",
+              "description": "購買 credits、查餘額、auto top-up、交易紀錄",
+              "independence": "medium"
+            },
+            {
+              "id": "FA-C",
+              "name": "API Key Provisioning",
+              "description": "建立/列出/查看/更新/撤銷帶 credit limit 的 provisioned key",
+              "independence": "medium"
+            },
+            {
+              "id": "FA-D",
+              "name": "OpenClaw 整合",
+              "description": "一鍵注入 provisioned key 到 OpenClaw fallback chain",
+              "independence": "medium"
+            }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["architect"],
+        "completed_at": "2026-03-14T22:00:00+08:00",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-14_1_openclaw-token-cli/s1_dev_spec.md",
+          "api_spec_path": "dev/specs/2026-03-14_1_openclaw-token-cli/s1_api_spec.md",
+          "impact_scope": {
+            "new_files": 30,
+            "modified_files": 0,
+            "layers": ["CLI Commands", "Services", "API Client", "Mock Backend", "Config", "Output"]
+          },
+          "tasks": [
+            { "id": 1, "name": "專案初始化", "fa": "Infra", "complexity": "S", "wave": 1 },
+            { "id": 2, "name": "Config 模組", "fa": "Infra", "complexity": "M", "wave": 1 },
+            { "id": 3, "name": "API Client", "fa": "Infra", "complexity": "M", "wave": 1 },
+            { "id": 4, "name": "錯誤處理模組", "fa": "Infra", "complexity": "S", "wave": 1 },
+            { "id": 5, "name": "輸出模組", "fa": "Infra", "complexity": "S", "wave": 1 },
+            { "id": 6, "name": "參數驗證模組", "fa": "Infra", "complexity": "S", "wave": 1 },
+            { "id": 7, "name": "Commander 主程式 + 全域 flags", "fa": "Infra", "complexity": "S", "wave": 1 },
+            { "id": 8, "name": "Mock Store", "fa": "Infra", "complexity": "M", "wave": 1 },
+            { "id": 9, "name": "Auth Mock Handlers", "fa": "FA-A", "complexity": "M", "wave": 2 },
+            { "id": 10, "name": "Auth Service + Commands", "fa": "FA-A", "complexity": "M", "wave": 2 },
+            { "id": 11, "name": "Credits Mock Handlers", "fa": "FA-B", "complexity": "M", "wave": 3 },
+            { "id": 12, "name": "Credits Service + Commands", "fa": "FA-B", "complexity": "L", "wave": 3 },
+            { "id": 13, "name": "Keys Mock Handlers", "fa": "FA-C", "complexity": "M", "wave": 4 },
+            { "id": 14, "name": "Keys Service + Commands", "fa": "FA-C", "complexity": "L", "wave": 4 },
+            { "id": 15, "name": "Integrate Service + Command", "fa": "FA-D", "complexity": "L", "wave": 5 },
+            { "id": 16, "name": "單元測試", "fa": "全域", "complexity": "M", "wave": 6 },
+            { "id": 17, "name": "整合測試", "fa": "全域", "complexity": "M", "wave": 6 },
+            { "id": 18, "name": "README + Help 文案", "fa": "全域", "complexity": "S", "wave": 6 }
+          ],
+          "acceptance_criteria": [
+            "AC-1: auth register 成功儲存 management_key",
+            "AC-2: auth login 成功更新 config",
+            "AC-3: auth login 失敗顯示友善錯誤",
+            "AC-4: auth whoami 顯示帳戶資訊",
+            "AC-5: auth logout 清除 config",
+            "AC-6: OPENCLAW_TOKEN_KEY 環境變數覆蓋",
+            "AC-7: credits balance 顯示餘額",
+            "AC-8: credits buy 含平台費確認購買",
+            "AC-9: credits buy --yes 跳過確認",
+            "AC-10: credits history 交易紀錄表格",
+            "AC-11: credits auto-topup 設定成功",
+            "AC-12: keys create 顯示 key 值（僅一次）",
+            "AC-13: keys list 表格列出",
+            "AC-14: keys info 用量統計",
+            "AC-15: keys update 更新成功",
+            "AC-16: keys revoke 撤銷成功",
+            "AC-17: integrate 注入 OpenClaw fallback",
+            "AC-18: integrate --remove 移除整合",
+            "AC-19: integrate --status 狀態查詢",
+            "AC-20: 未認證操作提示登入",
+            "AC-21: API 不可達顯示友善錯誤",
+            "AC-22: --json 輸出 valid JSON",
+            "AC-23: --mock 使用 mock backend"
+          ],
+          "assumptions": [
+            "OpenClaw CLI 已有穩定的 config 格式（openclaw.json）",
+            "Mock backend 足以驗證所有 CLI 行為",
+            "Management Key 不需 refresh/rotation 機制（MVP）"
+          ],
+          "solution_summary": "Node.js + TypeScript + Commander.js CLI 工具，分層架構（Commands → Services → API Client），內建 mock handler 支援開發測試，zod 參數驗證，chalk/ora/cli-table3 輸出格式化。18 個任務分 6 波次執行。",
+          "tech_debt": [
+            "Mock backend 與真實 API 之間缺乏 contract test",
+            "無 refresh token 機制，management key 永久有效",
+            "Integrate 指令依賴 OpenClaw CLI 格式，未來格式變更需同步"
+          ],
+          "regression_risks": []
+        }
+      },
+      "s2": {
+        "status": "completed",
+        "agents": ["orchestrator", "architect"],
+        "completed_at": "2026-03-14T22:30:00+08:00",
+        "output": {
+          "review_report_path": "dev/specs/2026-03-14_1_openclaw-token-cli/s2_review_report.md",
+          "result": "conditional_pass",
+          "findings": { "p0": 0, "p1": 2, "p2": 3 },
+          "fixes_applied": ["SR-001: MockStore stateless demo strategy", "SR-002: 410 for already-revoked key", "SR-003: precise sk-mgmt- prefix", "SR-004: verbose output spec", "SR-005: env var priority"],
+          "spec_modified": true
+        }
+      },
+      "s3": {
+        "status": "completed",
+        "agents": ["architect"],
+        "completed_at": "2026-03-14T22:45:00+08:00",
+        "output": {
+          "implementation_plan_path": "dev/specs/2026-03-14_1_openclaw-token-cli/s3_implementation_plan.md",
+          "total_tasks": 18,
+          "estimated_waves": 6,
+          "ac_coverage": "23/23 (100%)"
+        }
+      },
+      "s4": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-14T23:00:00+08:00",
+        "output": {
+          "completed_tasks": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
+          "total_tests": 91,
+          "tests_passed": 91,
+          "build_status": "pass"
+        }
+      },
+      "s5": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-14T23:00:00+08:00",
+        "output": {
+          "conclusion": "conditional_pass",
+          "score": "4/5",
+          "fixes_applied": ["redactSecret 重複定義修正：刪除 errors/api.ts 的錯誤版本，統一 re-export 自 utils/redact.ts"],
+          "issues": { "p0": 0, "p1_blocking": 1, "p1_recommended": 5, "p2": 1, "dismissed": 0 },
+          "spec_verification": {
+            "s0_pass_rate": "5/5",
+            "s1_scope_match": true,
+            "dod_pass_rate": "18/18"
+          }
+        }
+      },
+      "s6": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-14T23:00:00+08:00",
+        "output": {
+          "automated_tests": { "total": 91, "passed": 91, "failed": 0, "test_files": 15 },
+          "defects": { "total": 0, "fixed": 0 },
+          "repair_loop_count": 0,
+          "recommendation": "proceed_to_s7",
+          "ac_coverage": "23/23 (100%)"
+        }
+      },
+      "s7": {
+        "status": "completed",
+        "agents": ["git-operator"],
+        "completed_at": "2026-03-14T23:10:00+08:00",
+        "output": {
+          "commit_branch": "main",
+          "changes": {
+            "new_files": 47,
+            "modified_files": 0,
+            "total_lines_added": 3406
+          },
+          "stats": {
+            "source_files": 30,
+            "test_files": 17,
+            "config_files": 5,
+            "spec_files": 6
+          }
+        }
+      }
+    },
+    "status": "completed",
+    "completed_at": "2026-03-14T23:10:00+08:00",
+    "lessons_learned": {
+      "what_went_well": [
+        "Multi-agent parallel dispatch significantly accelerated Wave 1 infra implementation",
+        "Linter auto-scaffolding complemented agent output, reducing manual coordination",
+        "Mock-first design enabled full CLI testing without real backend"
+      ],
+      "what_went_wrong": [
+        "Demo management key contained non-hex chars, causing mock auth validation failure",
+        "Axios request interceptors run LIFO, causing auth header missing in mock adapter",
+        "Auth/Credits mock handlers used global singleton instead of injected store"
+      ],
+      "new_pitfalls": [
+        "sk-mgmt- token format requires strict hex UUID — do not use mnemonic chars like 'demo'",
+        "Axios request interceptors execute in reverse registration order (LIFO) — set auth headers in the same interceptor that reads them",
+        "Mock handlers must use router-injected store parameter, not module-level singleton, for test isolation"
+      ]
+    }
+  }
+}
