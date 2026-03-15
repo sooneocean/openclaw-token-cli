@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:contract:mock": "vitest run --config vitest.contract.config.ts",
+    "test:contract:real": "CONTRACT_TEST_BASE_URL=http://localhost:3000 vitest run --config vitest.contract.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },
