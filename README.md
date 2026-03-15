@@ -50,9 +50,21 @@ openclaw-token --mock keys list
 openclaw-token --mock credits buy --amount 25 --yes
 ```
 
-### Production setup (4 steps)
+### Local server setup (5 steps)
+
+Run against a real PostgreSQL-backed server on your machine:
 
 ```bash
+# 0. Start the backend server (requires Bun + PostgreSQL)
+git clone https://github.com/sooneocean/openclaw-token-server
+cd openclaw-token-server
+cp .env.example .env        # edit DATABASE_URL + GitHub OAuth settings
+bun install && bun run src/index.ts
+# Server running at http://localhost:3000
+
+# Back in another terminal — point CLI at local server:
+export OPENCLAW_TOKEN_API_BASE=http://localhost:3000
+
 # 1. Create an account
 openclaw-token auth register
 
@@ -65,6 +77,8 @@ openclaw-token keys create --name my-app --limit 10 --limit-reset monthly
 # 4. Inject into OpenClaw as a fallback token provider
 openclaw-token integrate
 ```
+
+> **Note:** The hosted production server (`proxy.openclaw-token.dev`) is not yet available. Use the local server setup above or `--mock` mode.
 
 ### Use with OpenClaw Skills
 
