@@ -55,6 +55,6 @@ describe('New Commands Registration', () => {
 
   it('version is 0.7.0', () => {
     const prog = createProgram();
-    expect(prog.version()).toBe('0.7.0');
+    expect(prog.version()).toBe('0.8.0');
   });
 });

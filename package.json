@@ -1,6 +1,6 @@
 {
   "name": "openclaw-token",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain",
   "type": "module",
   "bin": {
@@ -12,7 +12,9 @@
   },
   "typesVersions": {
     "*": {
-      "sdk": ["./dist/src/sdk.d.ts"]
+      "sdk": [
+        "./dist/src/sdk.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -44,22 +46,21 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
-    "axios": "^1.7.0",
-    "chalk": "^5.3.0",
+    "axios": "^1.13.0",
+    "chalk": "^5.6.0",
     "cli-table3": "^0.6.5",
-    "commander": "^12.1.0",
-    "inquirer": "^9.3.0",
-    "ora": "^8.1.0",
-    "which": "^4.0.0",
-    "zod": "^3.23.0"
+    "commander": "^14.0.3",
+    "ora": "^9.3.0",
+    "which": "^6.0.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^25.5.0",
     "@types/which": "^3.0.4",
-    "execa": "^8.0.1",
-    "tsup": "^8.2.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "execa": "^9.6.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.0"
   }
 }

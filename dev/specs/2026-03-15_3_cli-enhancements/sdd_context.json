@@ -5,12 +5,13 @@
     "spec_mode": "full_spec",
     "spec_folder": "dev/specs/2026-03-15_3_cli-enhancements",
     "work_type": "new_feature",
-    "status": "in_progress",
+    "status": "completed",
     "execution_mode": "autopilot",
-    "current_stage": "S6",
+    "current_stage": "S7",
     "started_at": "2026-03-15T15:15:00+08:00",
-    "last_updated": "2026-03-15T15:25:00+08:00",
-    "last_updated_by": "frontend-developer",
+    "last_updated": "2026-03-15T18:00:00+08:00",
+    "last_updated_by": "orchestrator",
+    "completed_at": "2026-03-15T18:00:00+08:00",
     "failed_approaches": [],
     "stages": {
       "s0": {

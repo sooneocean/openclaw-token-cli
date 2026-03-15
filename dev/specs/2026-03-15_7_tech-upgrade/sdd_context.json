@@ -1,0 +1,200 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "tech-upgrade",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_7_tech-upgrade",
+    "work_type": "refactor",
+    "status": "completed",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-15T22:57:00+08:00",
+    "completed_at": "2026-03-16T00:10:00+08:00",
+    "last_updated": "2026-03-16T00:10:00+08:00",
+    "last_updated_by": "git-operator",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "completed_at": "2026-03-15T22:57:00+08:00",
+        "agent": "requirement-analyst",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_7_tech-upgrade/s0_brief_spec.md",
+          "work_type": "refactor",
+          "requirement": "升級所有 dependencies 至最新版本、移除死依賴、清理架構冗餘",
+          "pain_points": [
+            "Dependencies 多處落後 2+ major versions",
+            "inquirer 是死依賴，程式碼只用 @inquirer/prompts",
+            "@types/which 可能多餘"
+          ],
+          "goal": "將所有 dependencies 升級到最新穩定版，移除不必要的套件，確保 173 測試全過",
+          "success_criteria": [
+            "所有 dependencies 升級至最新穩定版",
+            "移除 inquirer 死依賴",
+            "173 既有測試全部通過",
+            "npm run build 成功",
+            "npm run typecheck 通過",
+            "無新增 any type hack"
+          ],
+          "scope_in": [
+            "package.json dependencies/devDependencies 版本升級",
+            "因 breaking change 需要修改的程式碼",
+            "移除未使用的依賴",
+            "測試程式碼因 API 變更的調整"
+          ],
+          "scope_out": [
+            "新增功能",
+            "架構大改（如換掉 axios → fetch）",
+            "新增測試",
+            "CI/CD 變更"
+          ],
+          "constraints": [
+            "不改變任何外部行為",
+            "某個 major 升級若導致 >20 處修改可先跳過",
+            "升級順序：安全升級 → major → 清理"
+          ],
+          "functional_areas": [
+            { "id": "FA-SafeUpgrade", "name": "安全升級", "description": "Minor/patch 版本升級", "independence": "high" },
+            { "id": "FA-MajorUpgrade", "name": "Major 升級", "description": "Breaking change 套件升級", "independence": "medium" },
+            { "id": "FA-Cleanup", "name": "依賴清理", "description": "移除 inquirer、@types/which", "independence": "high" }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "started_at": "2026-03-15T23:00:00+08:00",
+        "completed_at": "2026-03-15T23:25:00+08:00",
+        "output": {
+          "dev_spec_path": "dev/specs/2026-03-15_7_tech-upgrade/s1_dev_spec.md",
+          "tasks": [
+            { "id": "T1", "name": "更新 minor/patch 版本約束" },
+            { "id": "T2", "name": "移除 inquirer 死依賴" },
+            { "id": "T3", "name": "npm install + 基準測試" },
+            { "id": "T4", "name": "升級 commander 12→14" },
+            { "id": "T5", "name": "升級 zod 3→4" },
+            { "id": "T6", "name": "升級 vitest 2→4" },
+            { "id": "T7", "name": "升級 ora 8→9" },
+            { "id": "T8", "name": "升級 which 4→6" },
+            { "id": "T9", "name": "升級 execa 8→9 + 重寫 smoke.test.ts" },
+            { "id": "T10", "name": "升級 @types/node 20→25" },
+            { "id": "T11", "name": "全量測試 + typecheck + build 驗證" },
+            { "id": "T12", "name": "更新 ARCHITECTURE.md 版本引用" },
+            { "id": "T13", "name": "bump package.json version → 0.8.0" }
+          ]
+        }
+      },
+      "s2": {
+        "status": "completed",
+        "completed_at": "2026-03-15T23:40:00+08:00",
+        "agent": "orchestrator",
+        "output": {
+          "conclusion": "pass",
+          "fixes_applied": 6
+        }
+      },
+      "s3": {
+        "status": "completed",
+        "completed_at": "2026-03-15T23:42:00+08:00",
+        "agent": "orchestrator",
+        "output": {
+          "plan_source": "dev_spec tasks (13 tasks, 3 waves)"
+        }
+      },
+      "s4": {
+        "status": "completed",
+        "started_at": "2026-03-15T23:42:00+08:00",
+        "completed_at": "2026-03-15T23:55:00+08:00",
+        "agent": "orchestrator",
+        "output": {
+          "completed_tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12", "T13"],
+          "build_status": {
+            "typecheck": "pass",
+            "test": "24 files, 173 tests passed",
+            "contract_test": "6 files, 38 tests passed",
+            "build": "pass"
+          },
+          "changes": {
+            "modified": [
+              "package.json",
+              "package-lock.json",
+              "src/index.ts",
+              "tests/unit/output/formatter.test.ts",
+              "tests/integration/smoke.test.ts",
+              "tests/integration/new-commands.test.ts",
+              "tests/integration/keys-io.test.ts",
+              "ARCHITECTURE.md",
+              "vitest.config.ts"
+            ]
+          },
+          "unknowns_resolved": {
+            "U-1": "which v6 does NOT bundle types — @types/which kept",
+            "U-2": "commander v14 action() second param unchanged — no code changes needed",
+            "U-3": "zod v4 no breaking changes for our usage — all tests pass",
+            "U-4": "vitest v4 spy behavior changed (mock calls persist across tests) — fixed with vi.restoreAllMocks()"
+          },
+          "tdd_summary": {
+            "tdd_skip_reason": "no_testable_logic",
+            "note": "dependency upgrade refactor — no new testable logic"
+          }
+        }
+      },
+      "s5": {
+        "status": "completed",
+        "completed_at": "2026-03-15T23:58:00+08:00",
+        "agent": "reviewer"
+      },
+      "s6": {
+        "status": "completed",
+        "completed_at": "2026-03-16T00:05:00+08:00",
+        "agent": "test-engineer"
+      },
+      "s7": {
+        "status": "completed",
+        "started_at": "2026-03-16T00:08:00+08:00",
+        "completed_at": "2026-03-16T00:10:00+08:00",
+        "agent": "git-operator",
+        "output": {
+          "branch": "main",
+          "changes": {
+            "modified": [
+              "package.json",
+              "package-lock.json",
+              "src/index.ts",
+              "tests/unit/output/formatter.test.ts",
+              "tests/integration/smoke.test.ts",
+              "tests/integration/new-commands.test.ts",
+              "tests/integration/keys-io.test.ts",
+              "ARCHITECTURE.md",
+              "vitest.config.ts",
+              "dev/specs/2026-03-15_3_cli-enhancements/sdd_context.json"
+            ],
+            "new": [
+              "dev/specs/2026-03-15_7_tech-upgrade/"
+            ]
+          },
+          "stats": {
+            "files_changed": 11,
+            "insertions": "~1064",
+            "deletions": "~1290"
+          }
+        }
+      }
+    },
+    "lessons_learned": {
+      "what_went_well": "逐一升級 + 即時測試策略有效，每個 major upgrade 完成後立即跑 test suite，快速隔離唯一真正的 breaking change（vitest v4 spy behavior）；大多數升級（commander, zod, ora, which, @types/node）零 code change 直接通過",
+      "what_went_wrong": "dev_spec 在 S1 誤估測試檔案數為 33 files，實際只有 24 files；S2 review 捕獲此問題並在 spec 修正，沒有造成後續影響",
+      "new_pitfalls": [
+        {
+          "tag": "vitest",
+          "title": "vitest v4 spy/mock 狀態在測試間持久",
+          "detail": "vitest v4 改變了 spy 的生命週期行為，mock calls 跨測試持久化。需在 beforeEach 加 vi.restoreAllMocks() 才能確保測試隔離。vitest v2 不需要此設定。",
+          "source": "tech-upgrade (2026-03)"
+        }
+      ],
+      "captured_at": "2026-03-16T00:10:00+08:00"
+    }
+  }
+}

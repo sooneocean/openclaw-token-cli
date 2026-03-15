@@ -46,7 +46,7 @@ export function createProgram(opts: CreateProgramOptions = {}): Command {
     .description(
       'CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain',
     )
-    .version('0.7.0')
+    .version('0.8.0')
     .option('--json', 'Output in JSON format', opts.json ?? false)
     .option('--mock', 'Use mock backend (no real API calls)', opts.mock ?? false)
     .option('--no-color', 'Disable colored output')

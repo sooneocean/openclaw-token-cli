@@ -7,7 +7,7 @@
  * All network calls use --mock flag so no real API is hit.
  */
 import { describe, it, expect } from 'vitest';
-import { execaCommand } from 'execa';
+import { execa } from 'execa';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,7 +21,7 @@ async function cli(
   env: Record<string, string> = {},
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   try {
-    const result = await execaCommand(`npx tsx ${CLI} ${args}`, {
+    const result = await execa('npx', ['tsx', CLI, ...args.split(/\s+/).filter(Boolean)], {
       cwd: ROOT,
       env: { ...process.env, ...env },
       reject: false,

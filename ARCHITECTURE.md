@@ -19,12 +19,12 @@ The system consists of two repositories:
 |----------|-----------|---------|---------|
 | Runtime | Node.js | 18+ | CLI execution |
 | Language | TypeScript | 5.x | Type safety |
-| CLI Framework | Commander.js | ^12 | Command parsing |
-| HTTP Client | Axios | ^1.7 | API requests |
-| Validation | Zod | ^3.23 | Config schema validation |
+| CLI Framework | Commander.js | ^14 | Command parsing |
+| HTTP Client | Axios | ^1.13 | API requests |
+| Validation | Zod | ^4.3 | Config schema validation |
 | Output | chalk, ora, cli-table3 | latest | Terminal formatting |
 | Build | tsup | latest | Bundle for distribution |
-| Test | Vitest | ^2.1 | Unit + integration + contract tests |
+| Test | Vitest | ^4.1 | Unit + integration + contract tests |
 
 ### Server (openclaw-token-server)
 
@@ -320,7 +320,7 @@ bun test                      # 60 tests (requires PostgreSQL)
 
 | Suite | Count | Framework | Description |
 |-------|-------|-----------|-------------|
-| CLI Unit + Integration | 167 | Vitest | Mock backend, services, utils |
+| CLI Unit + Integration | 173 | Vitest | Mock backend, services, utils |
 | CLI Contract | 38 | Vitest | Mock vs real server parity |
 | Server Integration | 60 | Bun test | Full DB integration |
 | **Total** | **265** | | |

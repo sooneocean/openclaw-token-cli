@@ -3,6 +3,7 @@ import { output } from '../../../src/output/formatter.js';
 
 describe('output', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   });
 
