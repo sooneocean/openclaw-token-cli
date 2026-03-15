@@ -1,0 +1,158 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "api-proxy",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_5_api-proxy",
+    "work_type": "new_feature",
+    "status": "completed",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "completed_at": "2026-03-15T23:45:00+08:00",
+    "started_at": "2026-03-15T23:00:00+08:00",
+    "last_updated": "2026-03-15T23:45:00+08:00",
+    "last_updated_by": "orchestrator",
+    "target_repo": "/Users/asd/demo/openclaw-token-server",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "completed_at": "2026-03-15T23:00:00+08:00",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_5_api-proxy/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "在 openclaw-token-server 新增 proxy endpoint，讓 agent 用 provisioned key 透過 proxy 打 OpenAI-compatible LLM API，自動計算 token usage 並扣減 credits",
+          "pain_points": [
+            "Provisioned key 沒有實際轉發能力",
+            "Usage stats 是假的靜態乘數",
+            "Credits 沒有消耗機制",
+            "系統只有管理面，缺少核心 proxy 價值"
+          ],
+          "goal": "讓 provisioned key 成為真正可用的 API key，透過 proxy 轉發 LLM 請求並自動計算 usage",
+          "success_criteria": [
+            "POST /v1/chat/completions endpoint 可用",
+            "有效 key 成功轉發到上游 LLM",
+            "無效/revoked/disabled key 回傳 401",
+            "Credits 不足回傳 402",
+            "Usage tokens 正確提取並記錄",
+            "provisioned_keys.usage 和 credit_balances.total_usage 更新",
+            "usage_logs 表記錄每次請求",
+            "上游不可達回傳 502",
+            "現有測試不受影響",
+            "新增至少 10 個 proxy 測試"
+          ],
+          "scope_in": [
+            "FA-P: POST /v1/chat/completions proxy endpoint",
+            "FA-A: Provisioned key 驗證 middleware",
+            "FA-U: Usage 計算 + credits 扣減 + usage_logs",
+            "FA-D: usage_logs 表 migration"
+          ],
+          "scope_out": [
+            "Streaming (SSE)",
+            "多 provider adapter",
+            "真實 model pricing API",
+            "Rate limiting (SOP-10)",
+            "Auto-topup (SOP-11)",
+            "token-cli 修改"
+          ],
+          "constraints": [
+            "Hono + Bun server",
+            "PostgreSQL",
+            "環境變數配置上游 API key",
+            "不修改 request/response body",
+            "cost-per-1M-tokens pricing 模型"
+          ],
+          "functional_areas": [
+            { "id": "FA-P", "name": "Proxy Endpoint", "description": "POST /v1/chat/completions 轉發", "independence": "high" },
+            { "id": "FA-A", "name": "Key 驗證", "description": "provisioned key 有效性、credit limit、disabled/revoked", "independence": "high" },
+            { "id": "FA-U", "name": "Usage 計算", "description": "token 計算、cost 計算、credits 扣減、usage_logs", "independence": "medium" },
+            { "id": "FA-D", "name": "DB Schema", "description": "usage_logs 表 migration", "independence": "high" }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "completed_at": "2026-03-15T23:15:00+08:00",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-15_5_api-proxy/s1_dev_spec.md",
+          "solution_summary": "新增 POST /v1/chat/completions proxy endpoint，含 provisioned key auth middleware、upstream 轉發、usage 計算 + credits 扣減（PostgreSQL transaction）、usage_logs 記錄",
+          "tasks": [
+            { "id": 1, "name": "DB Migration: usage_logs", "type": "db", "complexity": "S" },
+            { "id": 2, "name": "Config: upstream API", "type": "backend", "complexity": "S" },
+            { "id": 3, "name": "Pricing: calculateCost", "type": "backend", "complexity": "S" },
+            { "id": 4, "name": "Provisioned Key Auth MW", "type": "backend", "complexity": "M" },
+            { "id": 5, "name": "Usage Service: recordUsage", "type": "backend", "complexity": "M" },
+            { "id": 6, "name": "Proxy Route", "type": "backend", "complexity": "L" },
+            { "id": 7, "name": "App 掛載", "type": "backend", "complexity": "S" },
+            { "id": 8, "name": "整合測試", "type": "test", "complexity": "L" }
+          ],
+          "acceptance_criteria": 11,
+          "assumptions": [
+            "上游 API 為 OpenAI-compatible 格式",
+            "不支援 streaming (SSE)",
+            "單一上游 provider",
+            "Pricing 硬編碼，不需即時更新"
+          ],
+          "tech_debt": [
+            "Pricing 硬編碼，未來應移至 DB 或設定檔",
+            "無 streaming 支援",
+            "Transaction 失敗時無 alerting 機制",
+            "無 rate limiting"
+          ],
+          "regression_risks": [
+            "現有路由不受影響（獨立 middleware + 不同路徑）",
+            "不修改現有表結構"
+          ]
+        }
+      },
+      "s4": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-15T23:40:00+08:00",
+        "output": {
+          "completed_tasks": [1, 2, 3, 4, 5, 6, 7, 8],
+          "total_tests": 60,
+          "tests_passed": 60,
+          "build_status": "pass",
+          "changes": {
+            "new_files": [
+              "src/db/migrations/002_usage_logs.sql",
+              "src/utils/pricing.ts",
+              "src/utils/usage.ts",
+              "src/middleware/proxy-auth.ts",
+              "src/routes/proxy.ts",
+              "tests/integration/proxy.test.ts"
+            ],
+            "modified_files": [
+              "src/config.ts",
+              "src/app.ts",
+              "tests/setup.ts"
+            ]
+          },
+          "repo_path": "/Users/asd/demo/openclaw-token-server",
+          "commit": "bf002bb"
+        }
+      },
+      "s7": {
+        "status": "completed",
+        "agent": "orchestrator",
+        "completed_at": "2026-03-15T23:45:00+08:00",
+        "output": {
+          "commit_hash": "bf002bb",
+          "branch": "main",
+          "repo": "openclaw-token-server",
+          "stats": {
+            "files_changed": 9,
+            "insertions": 809,
+            "tests_passed": 60
+          }
+        }
+      }
+    }
+  }
+}
