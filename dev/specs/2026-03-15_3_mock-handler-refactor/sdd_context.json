@@ -1,0 +1,415 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "mock-handler-refactor",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_3_mock-handler-refactor",
+    "work_type": "refactor",
+    "status": "in_progress",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-15T20:00:00+08:00",
+    "last_updated": "2026-03-15T20:55:00+08:00",
+    "last_updated_by": "orchestrator",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "completed_at": "2026-03-15T20:00:00+08:00",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_3_mock-handler-refactor/s0_brief_spec.md",
+          "work_type": "refactor",
+          "requirement": "消除 mock handler 重複程式碼，重構 MockStore token→email 靜態映射為真實映射",
+          "pain_points": [
+            "extractToken/requireValidToken 在 3 個 handler 中完全重複（各 13 行）",
+            "oauth.mock.ts 有功能相同但命名不同的 extractBearerToken",
+            "MockStore.getEmailForToken 靜態映射所有 token 到 demo@openclaw.dev"
+          ],
+          "goal": "消除重複、支援多用戶 token 映射，為 contract testing 掃除障礙",
+          "success_criteria": [
+            "src/mock/utils.ts export extractToken + requireValidToken",
+            "三個 handler 無 local 重複定義",
+            "getEmailForToken 查 tokenEmailMap，不存在返回 null",
+            "register/login/rotate/OAuth userinfo 維護映射",
+            "store.reset() 清除映射並重建 demo 初始映射",
+            "134 個測試全過"
+          ],
+          "scope_in": [
+            "FA-U: Mock Utils 抽取",
+            "FA-S: MockStore Token 映射重構",
+            "FA-H: Handler 更新",
+            "FA-T: 測試修復"
+          ],
+          "scope_out": [
+            "CLI 業務邏輯",
+            "API Client",
+            "MockRouter",
+            "Mock bootstrap",
+            "Handler HTTP 回應規格"
+          ],
+          "constraints": [
+            "HTTP 回應規格不變",
+            "extractToken 只做 Bearer header 剝離",
+            "遵循 factory pattern",
+            "測試隔離 beforeEach reset"
+          ],
+          "functional_areas": [
+            { "id": "FA-U", "name": "Mock Utils 抽取", "description": "抽取 extractToken + requireValidToken 到共用模組", "independence": "high" },
+            { "id": "FA-S", "name": "MockStore Token 映射", "description": "getEmailForToken 改為真實 tokenEmailMap 查找", "independence": "high" },
+            { "id": "FA-H", "name": "Handler 更新", "description": "4 個 handler 更新 import + 映射維護", "independence": "medium" },
+            { "id": "FA-T", "name": "測試修復", "description": "更新受影響的測試以匹配新行為", "independence": "low" }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "started_at": "2026-03-15T20:05:00+08:00",
+        "completed_at": "2026-03-15T20:15:00+08:00",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-15_3_mock-handler-refactor/s1_dev_spec.md",
+          "impact_scope": {
+            "new_files": [
+              "src/mock/utils.ts"
+            ],
+            "modified_files": [
+              "src/mock/handlers/auth.mock.ts",
+              "src/mock/handlers/credits.mock.ts",
+              "src/mock/handlers/keys.mock.ts",
+              "src/mock/handlers/oauth.mock.ts",
+              "src/mock/store.ts"
+            ],
+            "test_files_requiring_update": [
+              "tests/unit/mock/store.test.ts",
+              "tests/unit/mock/handlers/auth.mock.test.ts",
+              "tests/unit/mock/handlers/credits.mock.test.ts",
+              "tests/unit/mock/handlers/keys.mock.test.ts",
+              "tests/unit/mock/handlers/oauth.mock.test.ts",
+              "tests/integration/auth.test.ts",
+              "tests/integration/credits.test.ts",
+              "tests/integration/keys.test.ts",
+              "tests/integration/oauth.test.ts"
+            ],
+            "unaffected_files": [
+              "src/mock/handler.ts",
+              "src/mock/index.ts",
+              "src/services/*",
+              "src/commands/*",
+              "src/api/*"
+            ]
+          },
+          "tasks": [
+            "T1: 建立 src/mock/utils.ts（extractToken + requireValidToken）",
+            "T2: MockStore tokenEmailMap 重構（getEmailForToken + set/remove + initDefaults + reset）",
+            "T3: auth.mock.ts 更新（刪重複、import utils、register/login/rotate 映射維護）",
+            "T4: credits.mock.ts + keys.mock.ts 更新（刪重複、import utils）",
+            "T5: oauth.mock.ts 更新（extractBearerToken→extractToken、userinfo 映射維護）",
+            "T6: store.test.ts 更新",
+            "T7: handler 單元測試更新",
+            "T8: 全量回歸驗證"
+          ],
+          "acceptance_criteria": 10,
+          "assumptions": [
+            "U1: initDefaults() 加入 DEMO_MANAGEMENT_KEY→DEMO_EMAIL 映射（已確認）",
+            "U2: login 時建立 token→email 映射（已確認）",
+            "U3: rotate 後刪除舊 token 映射（已確認，乾淨起見）"
+          ],
+          "solution_summary": "抽取 extractToken/requireValidToken 到 src/mock/utils.ts 消除 3 檔 39 行重複；MockStore 新增 tokenEmailMap 實現真實 token→email 映射（取代靜態回傳）；四個 handler 更新 import 並在 register/login/rotate/OAuth userinfo 中維護映射生命週期；統一 oauth.mock.ts 命名為 extractToken",
+          "tech_debt": [
+            "P-CLI-004 消除：extractToken/requireValidToken 跨模組重複",
+            "TD-2 解決：getEmailForToken 靜態映射改為真實映射"
+          ],
+          "regression_risks": [
+            "測試使用任意格式 token 預期映射 demo → 需改用 DEMO_MANAGEMENT_KEY",
+            "getEmailForToken 回傳型別 string → string | null",
+            "store.test.ts L29-31 斷言需更新",
+            "rotate 映射維護需同時刪舊加新"
+          ],
+          "risks": [
+            {
+              "risk": "getEmailForToken 回傳型別由 string 改為 string | null",
+              "level": "high",
+              "description": "requireValidToken 已呼叫 store.getEmailForToken(token) 並直接返回其結果。型別改變後，凡是用 typeof result !== 'string' 判斷的地方都需驗證邏輯是否仍正確。null 應該在 requireValidToken 內部轉換為 401 MockResponse。",
+              "mitigation": "requireValidToken 內部加上 null 檢查：getEmailForToken 回 null 時直接返回 401，而非回傳 null 給上游 handler"
+            },
+            {
+              "risk": "既有測試使用任意合法格式 token 期望對應到 demo@openclaw.dev",
+              "level": "high",
+              "description": "auth.mock.test.ts L49、credits.mock.test.ts、keys.mock.test.ts 都使用固定的測試 token 且預期回傳 demo 帳號資料。重構後 tokenEmailMap 若無此 token 的映射，getEmailForToken 回傳 null，所有這些測試都會 401。",
+              "mitigation": "測試改用 DEMO_MANAGEMENT_KEY 或先透過 register/login 建立映射"
+            },
+            {
+              "risk": "auth.mock.ts POST /auth/rotate 的 requestToken 邏輯",
+              "level": "medium",
+              "mitigation": "utils.ts export extractToken，rotate handler 直接 import 使用"
+            },
+            {
+              "risk": "oauth.mock.ts access_token 格式不相容 requireValidToken",
+              "level": "medium",
+              "mitigation": "oauth.mock.ts 只做函數改名，不引入 requireValidToken"
+            },
+            {
+              "risk": "tokenEmailMap reset 後未重建 demo 映射",
+              "level": "low",
+              "mitigation": "reset() 呼叫 initDefaults() 已自動重建"
+            }
+          ],
+          "unknowns": [],
+          "dependencies": {
+            "internal": {
+              "new_module": "src/mock/utils.ts",
+              "store_dependency": "requireValidToken 接受 MockStore 參數",
+              "handler_types": "utils.ts import MockRequest/MockResponse/MockStore"
+            },
+            "test_dependencies": "handler 測試透過 handleMockRequest 間接測試"
+          }
+        }
+      },
+      "s2": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-15T20:25:00+08:00",
+        "output": {
+          "review_report_path": "dev/specs/2026-03-15_3_mock-handler-refactor/s2_review_report.md",
+          "result": "conditional_pass",
+          "findings": { "p0": 0, "p1": 1, "p2": 1, "dismissed": 6 },
+          "fixes_applied": ["SR-001: T2 DoD 新增 export DEMO_MANAGEMENT_KEY/DEMO_EMAIL"],
+          "spec_modified": true
+        }
+      },
+      "s3": {
+        "status": "completed",
+        "agent": "architect",
+        "completed_at": "2026-03-15T20:30:00+08:00",
+        "output": {
+          "implementation_plan_path": "dev/specs/2026-03-15_3_mock-handler-refactor/s3_implementation_plan.md",
+          "total_tasks": 8,
+          "estimated_waves": 3,
+          "ac_coverage": {
+            "AC-1": ["T3", "T4"],
+            "AC-2": ["T5"],
+            "AC-3": ["T2", "T6"],
+            "AC-4": ["T2", "T6"],
+            "AC-5": ["T3", "T7"],
+            "AC-6": ["T3", "T7"],
+            "AC-7": ["T3", "T7"],
+            "AC-8": ["T5", "T7"],
+            "AC-9": ["T2", "T6"],
+            "AC-10": ["T8"]
+          },
+          "waves": [
+            {
+              "wave": 1,
+              "name": "基礎設施",
+              "tasks": [
+                {
+                  "id": "T1",
+                  "name": "建立 src/mock/utils.ts",
+                  "agent": "backend-expert",
+                  "dependencies": [],
+                  "complexity": "S",
+                  "parallel": true,
+                  "affected_files": ["src/mock/utils.ts"],
+                  "tdd_plan": null,
+                  "skip_justification": "utils.ts 的函式由 requireValidToken 的呼叫者間接測試，不需獨立測試檔"
+                },
+                {
+                  "id": "T2",
+                  "name": "MockStore tokenEmailMap 重構",
+                  "agent": "backend-expert",
+                  "dependencies": [],
+                  "complexity": "M",
+                  "parallel": true,
+                  "affected_files": ["src/mock/store.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/mock/store.test.ts",
+                    "test_cases": [
+                      "getEmailForToken returns mapped email for DEMO_MANAGEMENT_KEY",
+                      "getEmailForToken returns null for unknown token",
+                      "setTokenEmailMapping creates mapping",
+                      "removeTokenEmailMapping removes mapping",
+                      "reset rebuilds demo mapping only"
+                    ],
+                    "test_command": "npx vitest run tests/unit/mock/store.test.ts"
+                  }
+                }
+              ],
+              "parallel": true
+            },
+            {
+              "wave": 2,
+              "name": "Handler 更新",
+              "tasks": [
+                {
+                  "id": "T3",
+                  "name": "auth.mock.ts 更新",
+                  "agent": "backend-expert",
+                  "dependencies": ["T1", "T2"],
+                  "complexity": "M",
+                  "parallel": true,
+                  "affected_files": ["src/mock/handlers/auth.mock.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/mock/handlers/auth.mock.test.ts",
+                    "test_cases": [
+                      "register returns 201 with mapped key",
+                      "login returns mapped management_key",
+                      "rotate revokes old key and maps new key",
+                      "me returns 401 for unmapped token"
+                    ],
+                    "test_command": "npx vitest run tests/unit/mock/handlers/auth.mock.test.ts"
+                  }
+                },
+                {
+                  "id": "T4",
+                  "name": "credits.mock.ts + keys.mock.ts 更新",
+                  "agent": "backend-expert",
+                  "dependencies": ["T1"],
+                  "complexity": "S",
+                  "parallel": true,
+                  "affected_files": ["src/mock/handlers/credits.mock.ts", "src/mock/handlers/keys.mock.ts"],
+                  "tdd_plan": {
+                    "test_file": ["tests/unit/mock/handlers/credits.mock.test.ts", "tests/unit/mock/handlers/keys.mock.test.ts"],
+                    "test_cases": [
+                      "credits returns 401 for unmapped token",
+                      "keys returns 401 for unmapped token"
+                    ],
+                    "test_command": "npx vitest run tests/unit/mock/handlers/credits.mock.test.ts tests/unit/mock/handlers/keys.mock.test.ts"
+                  }
+                },
+                {
+                  "id": "T5",
+                  "name": "oauth.mock.ts 更新",
+                  "agent": "backend-expert",
+                  "dependencies": ["T1", "T2"],
+                  "complexity": "S",
+                  "parallel": true,
+                  "affected_files": ["src/mock/handlers/oauth.mock.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/mock/handlers/oauth.mock.test.ts",
+                    "test_cases": [
+                      "userinfo creates token-email mapping",
+                      "userinfo uses extractToken for bearer header"
+                    ],
+                    "test_command": "npx vitest run tests/unit/mock/handlers/oauth.mock.test.ts"
+                  }
+                }
+              ],
+              "parallel": true
+            },
+            {
+              "wave": 3,
+              "name": "測試驗證",
+              "tasks": [
+                {
+                  "id": "T6",
+                  "name": "store.test.ts 更新",
+                  "agent": "backend-expert",
+                  "dependencies": ["T2"],
+                  "complexity": "S",
+                  "parallel": false,
+                  "affected_files": ["tests/unit/mock/store.test.ts"],
+                  "tdd_plan": null,
+                  "skip_justification": "任務本身就是寫測試"
+                },
+                {
+                  "id": "T7",
+                  "name": "handler 單元測試更新",
+                  "agent": "backend-expert",
+                  "dependencies": ["T3", "T4", "T5"],
+                  "complexity": "M",
+                  "parallel": false,
+                  "affected_files": [
+                    "tests/unit/mock/handlers/auth.mock.test.ts",
+                    "tests/unit/mock/handlers/credits.mock.test.ts",
+                    "tests/unit/mock/handlers/keys.mock.test.ts",
+                    "tests/unit/mock/handlers/oauth.mock.test.ts"
+                  ],
+                  "tdd_plan": null,
+                  "skip_justification": "任務本身就是寫測試"
+                },
+                {
+                  "id": "T8",
+                  "name": "全量回歸驗證",
+                  "agent": "backend-expert",
+                  "dependencies": ["T6", "T7"],
+                  "complexity": "S",
+                  "parallel": false,
+                  "affected_files": [],
+                  "tdd_plan": null,
+                  "skip_justification": "任務本身就是跑測試"
+                }
+              ],
+              "parallel": false
+            }
+          ],
+          "verification": {
+            "static_analysis": ["npx tsc --noEmit"],
+            "unit_tests": ["npx vitest run"]
+          }
+        }
+      },
+      "s4": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "started_at": "2026-03-15T20:35:00+08:00",
+        "completed_at": "2026-03-15T20:45:00+08:00",
+        "output": {
+          "completed_tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"],
+          "total_tests": 166,
+          "tests_passed": 166,
+          "build_status": "pass",
+          "changes": {
+            "new_files": ["src/mock/utils.ts"],
+            "modified_files": [
+              "src/mock/store.ts",
+              "src/mock/handlers/auth.mock.ts",
+              "src/mock/handlers/credits.mock.ts",
+              "src/mock/handlers/keys.mock.ts",
+              "src/mock/handlers/oauth.mock.ts",
+              "tests/unit/mock/store.test.ts",
+              "tests/unit/mock/handlers/auth.mock.test.ts",
+              "tests/unit/mock/handlers/credits.mock.test.ts",
+              "tests/unit/mock/handlers/keys.mock.test.ts",
+              "tests/integration/credits.test.ts",
+              "tests/integration/keys.test.ts",
+              "tests/integration/json-output.test.ts",
+              "tests/integration/smoke.test.ts",
+              "tests/unit/services/auth.service.test.ts"
+            ]
+          }
+        }
+      },
+      "s5": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-15T20:50:00+08:00",
+        "output": {
+          "conclusion": "pass",
+          "score": "4/5",
+          "issues": { "p0": 0, "p1_blocking": 0, "p1_recommended": 0, "p2": 3, "dismissed": 0 },
+          "spec_verification": {
+            "s0_pass_rate": "6/6",
+            "s1_scope_match": true,
+            "dod_pass_rate": "6/6"
+          }
+        }
+      },
+      "s6": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-15T20:55:00+08:00",
+        "output": {
+          "automated_tests": { "total": 166, "passed": 166, "failed": 0, "test_files": 22 },
+          "defects": { "total": 0, "fixed": 0 },
+          "repair_loop_count": 0,
+          "recommendation": "proceed_to_s7",
+          "ac_coverage": "10/10 (100%)"
+        }
+      }
+    }
+  }
+}
