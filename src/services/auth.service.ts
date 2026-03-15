@@ -1,6 +1,6 @@
 import { createApiClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { ApiResponse, AuthRegisterResponse, AuthLoginResponse, AuthMeResponse } from '../api/types.js';
+import type { ApiResponse, AuthRegisterResponse, AuthLoginResponse, AuthMeResponse, AuthRotateResponse } from '../api/types.js';
 import { ConfigManager } from '../config/manager.js';
 import { DEFAULT_API_BASE } from '../config/paths.js';
 
@@ -50,6 +50,29 @@ export class AuthService {
 
   async logout(): Promise<void> {
     await ConfigManager.delete();
+  }
+
+  async rotate(token: string): Promise<AuthRotateResponse> {
+    const resolved = await ConfigManager.resolve();
+    const client = createApiClient({
+      mock: this.options.mock,
+      baseURL: resolved.api_base,
+      token,
+      verbose: this.options.verbose,
+    });
+    const resp = await client.post<ApiResponse<AuthRotateResponse>>(ENDPOINTS.AUTH_ROTATE, {});
+    const data = resp.data.data;
+
+    const existingConfig = await ConfigManager.read();
+    await ConfigManager.write({
+      management_key: data.management_key,
+      api_base: existingConfig?.api_base || resolved.api_base || DEFAULT_API_BASE,
+      email: existingConfig?.email || data.email,
+      created_at: existingConfig?.created_at || new Date().toISOString(),
+      last_login: existingConfig?.last_login || new Date().toISOString(),
+    });
+
+    return data;
   }
 
   async whoami(token: string): Promise<AuthMeResponse> {

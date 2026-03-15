@@ -428,7 +428,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **依賴**: Task #1
 - **描述**: 實作 `api/client.ts` — 建立 axios instance factory，支援兩種模式：(1) Real mode：直接打 API base URL，(2) Mock mode：使用自訂 adapter 路由到 mock handlers。透過 `createApiClient(options)` factory pattern 切換。加入 request interceptor 自動附加 `Authorization: Bearer <key>` header，以及 response interceptor 統一錯誤轉換。`api/endpoints.ts` 定義所有 path 常數。`api/types.ts` 定義所有 request/response 型別。
 - **DoD**:
-  - [ ] `createApiClient({ mock: true, store?: MockStore })` 回傳 mock adapter client，store 參數用於注入 MockStore 實例（未傳時使用預設 singleton）
+  - [ ] `createApiClient({ mock: true })` 回傳 mock adapter client
   - [ ] `createApiClient({ mock: false, baseURL, token })` 回傳 real client
   - [ ] Request interceptor 自動加 Authorization header
   - [ ] Response interceptor 將 4xx/5xx 轉為 `APIError`
@@ -452,7 +452,7 @@ interface KeyDetailResponse extends ProvisionedKey {
   - [ ] 410 → "This key has already been revoked."
   - [ ] Network error → "Cannot reach API" + 建議重試
   - [ ] 所有錯誤訊息定義為常數，不散落在各處
-  - [ ] `redactSecret(secret: string): string` 函式：保留前 8 char + 末 4 char，中間以 `****` 取代，總長 <= 12 時全遮蔽為 `****`。此為遮蔽的唯一 source of truth，Task #5 和 Task #7 的 verbose 輸出均使用此函式
+  - [ ] `redactSecret(secret: string): string` 函式：保留前 12 char + 末 4 char，總長 <= 16 時全遮蔽為 `****`
 - **驗收方式**: 單元測試覆蓋各 error code mapping
 
 #### Task #5: 輸出模組
@@ -490,15 +490,14 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **複雜度**: S
 - **Agent**: node-expert
 - **依賴**: Task #1
-- **描述**: 實作 `src/index.ts` — 建立 Commander program，設定 name, description, version。註冊全域 options：`--json`, `--mock`, `--no-color`, `--verbose`。設定全域 error handler（catch CLIError → 格式化輸出 + process.exit）。預留 command 註冊點。**Verbose 模式輸出規格**：每次 API call 前輸出 `[verbose] → METHOD /path`，call 後輸出 `[verbose] ← HTTP_STATUS (Xms)`。Authorization header 透過 `redactSecret()`（定義於 Task #4）自動遮蔽。Response body 不輸出。Verbose 寫到 stderr，不影響 `--json` 的 stdout。
+- **描述**: 實作 `src/index.ts` — 建立 Commander program，設定 name, description, version。註冊全域 options：`--json`, `--mock`, `--no-color`, `--verbose`。設定全域 error handler（catch CLIError → 格式化輸出 + process.exit）。預留 command 註冊點。**Verbose 模式輸出規格**：每次 API call 前輸出 `[verbose] → METHOD /path`，call 後輸出 `[verbose] ← HTTP_STATUS (Xms)`。Authorization header 遮蔽為 `sk-mgmt-****...****`（保留前 8 碼、後 4 碼）。Response body 不輸出。Verbose 寫到 stderr，不影響 `--json` 的 stdout。
 - **DoD**:
   - [ ] `openclaw-token --version` 顯示版本
   - [ ] `openclaw-token --help` 顯示所有子指令
   - [ ] 全域 flags 可在任何子指令使用
   - [ ] 未知指令顯示建議
   - [ ] 全域 error handler 正確 catch 並格式化錯誤
-  - [ ] `--verbose` 輸出 API call 摘要（method + path + status + latency），Authorization 透過 `redactSecret()`（定義於 Task #4）自動遮蔽，寫到 stderr
-  - [ ] 匯出 `createProgram(options?: { store?: MockStore }): Command` factory function，供整合測試注入 MockStore；預設不傳時使用全域 MockStore singleton（`--mock` 模式）
+  - [ ] `--verbose` 輸出 API call 摘要（method + path + status + latency），Authorization 自動遮蔽，寫到 stderr
 - **驗收方式**: CLI 可執行並正確解析全域 flags
 
 #### Task #8: Mock Store
@@ -506,7 +505,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **複雜度**: M
 - **Agent**: node-expert
 - **依賴**: Task #1
-- **描述**: 實作 `mock/store.ts` — in-memory 資料儲存，包含 users, credits, transactions, keys 四個 collection。提供 CRUD 方法。每次 CLI 執行時初始化預設資料（一個 demo 帳戶）。`mock/handler.ts` — mock request router，根據 method + path 分派到對應 handler。**Mock 採用「stateless demo account」策略**：認證驗證改為 token 格式驗證（`sk-mgmt-<uuid>` 格式即視為有效），不做 store lookup，統一回傳 demo 帳戶資料。此設計確保跨 CLI 指令的 mock 流程不因 in-memory store 重置而斷裂。**Login 例外**：`POST /auth/login` 不適用 stateless 策略，改用約定固定 demo 密碼（`demo-password`）驗證，密碼不符回傳 401，確保 AC#3 可測試。
+- **描述**: 實作 `mock/store.ts` — in-memory 資料儲存，包含 users, credits, transactions, keys 四個 collection。提供 CRUD 方法。每次 CLI 執行時初始化預設資料（一個 demo 帳戶）。`mock/handler.ts` — mock request router，根據 method + path 分派到對應 handler。**Mock 採用「stateless demo account」策略**：認證驗證改為 token 格式驗證（`sk-mgmt-<uuid>` 格式即視為有效），不做 store lookup，統一回傳 demo 帳戶資料。此設計確保跨 CLI 指令的 mock 流程不因 in-memory store 重置而斷裂。
 - **DoD**:
   - [ ] MockStore 包含 users / credits / transactions / keys 四個 Map
   - [ ] 預設初始化含一個 demo 帳戶（email: demo@openclaw.dev, credits: $100.00）
@@ -524,7 +523,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **複雜度**: M
 - **Agent**: node-expert
 - **依賴**: Task #3, #8
-- **描述**: 實作 `mock/handlers/auth.mock.ts` — 處理 POST /auth/register、POST /auth/login、GET /auth/me。Register 建立新 user + 產生 management key（UUID v4）。Login 使用約定 demo 密碼（`demo-password`）驗證，密碼不符回傳 401。Me 回傳帳戶資訊。
+- **描述**: 實作 `mock/handlers/auth.mock.ts` — 處理 POST /auth/register、POST /auth/login、GET /auth/me。Register 建立新 user + 產生 management key（UUID v4）。Login 驗證 email + password。Me 回傳帳戶資訊。
 - **DoD**:
   - [ ] POST /auth/register — 成功：201 + management_key；重複 email：409
   - [ ] POST /auth/login — 成功：200 + management_key；密碼錯：401
@@ -560,7 +559,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **DoD**:
   - [ ] GET /credits — 回傳 total_credits, total_usage, remaining
   - [ ] POST /credits/purchase — 計算 5.5% 平台費（min $0.80），更新餘額，建立 transaction
-  - [ ] POST /credits/purchase — 支援 `Idempotency-Key` request header 防重複（header 值由 client 端 `idempotencyKey` 選項傳入）
+  - [ ] POST /credits/purchase — 支援 idempotency_key 防重複
   - [ ] GET /credits/history — 回傳 transaction 列表（支援 limit/offset 分頁）
   - [ ] GET /credits/auto-topup — 回傳目前設定
   - [ ] PUT /credits/auto-topup — 更新設定
@@ -636,18 +635,17 @@ interface KeyDetailResponse extends ProvisionedKey {
   - **格式**: JSON，結構為 `{ providers: [...], fallback_chain: [...], ...其他欄位 }`
   - **注入 schema**: 在 `fallback_chain` 陣列末尾追加 `{ type: "openclaw-token", api_key_hash: "<hash>", endpoint: "<api_base>/v1/proxy", priority: <chain_length + 1> }`
   - **--remove**: 移除 `fallback_chain` 中 `type === "openclaw-token"` 的項目
-  - **--status**: 檢查 `fallback_chain` 中是否存在 `type === "openclaw-token"` 項目，並驗證對應 key 仍然有效（非 revoked/disabled）。若 key 已被撤銷或停用，顯示警告 `Warning: integrated key <hash> is revoked/disabled. Run: openclaw-token integrate --remove` 但不自動修改 config
+  - **--status**: 檢查 `fallback_chain` 中是否存在 `type === "openclaw-token"` 項目，並驗證對應 key 仍然有效（非 revoked/disabled）
   - **備份**: 修改前備份為 `openclaw.json.bak`（覆蓋上一次備份）
   - **衝突偵測**: 讀取時記錄檔案 hash，寫回前重新計算 hash 比對，不一致則拋出 `ConfigConflictError`
   - **Rollback**: 寫入失敗時從 `.bak` 還原（best effort，不保證原子性）
   - **未知欄位**: 讀取時保留所有未知欄位，寫回時原樣保留（defensive parsing）
 - **DoD**:
   - [ ] `integrate` — 偵測 OpenClaw → 選擇/建立 key → 注入 fallback → 驗證
-  - [ ] `integrate` — 若 `fallback_chain` 已含 `type === "openclaw-token"` 項目，先移除再注入新項目（upsert 語意），顯示 `Updated existing integration.`
   - [ ] `integrate` — OpenClaw 未安裝時顯示安裝指引
-  - [ ] `integrate` — 無 provisioned key 時自動建立（預設 name: `openclaw-integration`，credit_limit: null（無限制），不 prompt 用戶）
+  - [ ] `integrate` — 無 provisioned key 時自動建立
   - [ ] `integrate --remove` — 從 OpenClaw config 移除 fallback provider
-  - [ ] `integrate --status` — 顯示整合狀態 + fallback chain；若整合的 key 已被撤銷/停用，顯示警告但不自動修改 config
+  - [ ] `integrate --status` — 顯示整合狀態 + fallback chain
   - [ ] Atomic write 寫回 openclaw.json
   - [ ] 衝突偵測：寫回時如果 hash 不同則提示
   - [ ] 支援 `--json`
@@ -676,7 +674,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **複雜度**: M
 - **Agent**: node-expert
 - **依賴**: Task #16
-- **描述**: CLI 整合測試採 **in-process** 架構：透過 program factory（`createProgram({ store: mockStore })`）直接在 vitest 程序內初始化 Commander instance，注入共享的 MockStore 實例，驗證完整 user flow 狀態連續性（register → buy credits → create key → integrate）。**execa 僅保留 smoke test** — 確認 binary 可執行、`--help` 輸出正確、process.exit code 符合預期；不以 execa 執行完整業務流程。
+- **描述**: CLI 整合測試採 **in-process** 架構：透過 program factory（`createProgram(mockStore)`）直接在 vitest 程序內初始化 Commander instance，注入共享的 MockStore 實例，驗證完整 user flow 狀態連續性（register → buy credits → create key → integrate）。**execa 僅保留 smoke test** — 確認 binary 可執行、`--help` 輸出正確、process.exit code 符合預期；不以 execa 執行完整業務流程。
 - **DoD**:
   - [ ] FA-A: register → whoami → logout → login 完整流程（in-process，共享 MockStore）
   - [ ] FA-B: balance → buy → history → auto-topup 完整流程（in-process，共享 MockStore）
@@ -759,7 +757,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 | 16 | 撤銷 key | 已有 key | 執行 `keys revoke <hash>` → 確認 | Key 已停用 | P1 | FA-C |
 | 17 | 一鍵整合 | 已有 provisioned key + OpenClaw 已安裝 | 執行 `integrate` | Fallback provider 已注入 openclaw.json | P0 | FA-D |
 | 18 | 移除整合 | 已整合 | 執行 `integrate --remove` | Fallback provider 已移除 | P1 | FA-D |
-| 19 | 整合狀態 | 已整合 | 執行 `integrate --status` | 顯示整合狀態 + fallback chain；若 key 已撤銷或停用則顯示警告 | P1 | FA-D |
+| 19 | 整合狀態 | 已整合 | 執行 `integrate --status` | 顯示整合狀態 + fallback chain | P1 | FA-D |
 | 20 | 未認證操作 | 無 config | 執行 `credits balance` | 顯示 "Not logged in. Run: openclaw-token auth login" | P0 | 全域 |
 | 21 | API 不可達 | 已登入、網路斷線 | 執行任何 API 指令 | 顯示友善錯誤 + 建議重試 | P1 | 全域 |
 | 22 | JSON 輸出 | 已登入 | 執行 `credits balance --json` | 輸出 valid JSON | P0 | 全域 |

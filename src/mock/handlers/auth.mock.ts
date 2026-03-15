@@ -52,6 +52,32 @@ export function registerAuthHandlers(router: MockRouter): void {
     return { status: 200, data: { data: { management_key: user.management_key, email: user.email, last_login: new Date().toISOString() } } };
   });
 
+  router.register('POST', '/auth/rotate', (req: MockRequest, store: MockStore): MockResponse => {
+    const requestToken = extractToken(req);
+    const result = requireValidToken(req, store);
+    if (typeof result !== 'string') return result;
+    const email = result;
+
+    const user = store.users.get(email);
+    if (!user) {
+      return { status: 401, data: { error: { code: 'UNAUTHORIZED', message: 'Invalid or missing token' } } };
+    }
+
+    const oldKey = user.management_key;
+    const newKey = store.generateManagementKey();
+
+    store.revokedManagementKeys.add(oldKey);
+    if (requestToken && requestToken !== oldKey) {
+      store.revokedManagementKeys.add(requestToken);
+    }
+    user.management_key = newKey;
+
+    return {
+      status: 200,
+      data: { data: { management_key: newKey, email: user.email, rotated_at: new Date().toISOString() } },
+    };
+  });
+
   router.register('GET', '/auth/me', (req: MockRequest, store: MockStore): MockResponse => {
     const result = requireValidToken(req, store);
     if (typeof result !== 'string') return result;

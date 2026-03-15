@@ -1,0 +1,239 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "key-rotation",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_1_key-rotation",
+    "work_type": "new_feature",
+    "status": "in_progress",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-15T01:00:00+08:00",
+    "last_updated": "2026-03-15T03:45:00+08:00",
+    "last_updated_by": "orchestrator",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "completed_at": "2026-03-15T01:00:00+08:00",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_1_key-rotation/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "為 Management Key 和 Provisioned Keys 加入 rotation 機制，舊 key 立即失效",
+          "pain_points": [
+            "Management Key 永久有效，洩漏後無法快速失效",
+            "Provisioned Keys 只能 revoke 再重建，無法保留設定",
+            "auth logout 不失效 server-side key"
+          ],
+          "goal": "提供 auth rotate 和 keys rotate 指令，讓用戶能主動輪換 key 並立即失效舊 key",
+          "success_criteria": [
+            "auth rotate 成功產生新 Management Key 並更新 config",
+            "auth rotate 後舊 key 立即 401",
+            "keys rotate 保留 name/limit 設定",
+            "keys rotate 後舊 key value 立即無法使用",
+            "rotation 失敗時狀態明確",
+            "環境變數場景顯示 warning",
+            "--json 和 --mock 正常運作"
+          ],
+          "scope_in": [
+            "auth rotate 指令（FA-A+）",
+            "keys rotate <hash> 指令（FA-C+）",
+            "對應 mock handlers",
+            "對應 API types/endpoints",
+            "單元測試 + 整合測試"
+          ],
+          "scope_out": [
+            "Grace period",
+            "自動定期輪換排程",
+            "auth show-key 指令",
+            "真實後端 API 實作"
+          ],
+          "constraints": [
+            "遵循現有分層架構",
+            "Mock backend 行為與 API contract 一致",
+            "新指令風格與現有一致",
+            "Management Key rotation 後 atomic write 更新 config"
+          ],
+          "functional_areas": [
+            {
+              "id": "FA-A+",
+              "name": "Management Key Rotation",
+              "description": "auth rotate 指令，輪換 management key，舊 key 立即失效",
+              "independence": "high"
+            },
+            {
+              "id": "FA-C+",
+              "name": "Provisioned Key Rotation",
+              "description": "keys rotate <hash> 指令，輪換 provisioned key 保留設定",
+              "independence": "high"
+            }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "started_at": "2026-03-15T01:30:00+08:00",
+        "completed_at": "2026-03-15T02:00:00+08:00",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-15_1_key-rotation/s1_dev_spec.md",
+          "api_spec_path": "dev/specs/2026-03-15_1_key-rotation/s1_api_spec.md",
+          "impact_scope": {
+            "frontend": [],
+            "backend": [
+              "src/commands/auth.ts",
+              "src/commands/keys.ts",
+              "src/services/auth.service.ts",
+              "src/services/keys.service.ts",
+              "src/mock/handlers/auth.mock.ts",
+              "src/mock/handlers/keys.mock.ts",
+              "src/mock/store.ts",
+              "src/api/endpoints.ts",
+              "src/api/types.ts",
+              "tests/unit/mock/handlers/auth.mock.test.ts",
+              "tests/unit/mock/handlers/keys.mock.test.ts",
+              "tests/unit/services/auth.service.test.ts",
+              "tests/integration/auth.test.ts",
+              "tests/integration/keys.test.ts"
+            ],
+            "database": []
+          },
+          "tasks": [
+            { "id": 1, "name": "API 型別定義", "fa": "shared", "wave": 1, "complexity": "S" },
+            { "id": 2, "name": "Endpoint 常數", "fa": "shared", "wave": 1, "complexity": "S" },
+            { "id": 3, "name": "MockStore 黑名單擴充", "fa": "shared", "wave": 1, "complexity": "S" },
+            { "id": 4, "name": "auth rotate mock handler", "fa": "FA-A+", "wave": 2, "complexity": "M" },
+            { "id": 5, "name": "AuthService.rotate()", "fa": "FA-A+", "wave": 2, "complexity": "M" },
+            { "id": 6, "name": "auth rotate command", "fa": "FA-A+", "wave": 2, "complexity": "M" },
+            { "id": 7, "name": "keys rotate mock handler", "fa": "FA-C+", "wave": 3, "complexity": "M" },
+            { "id": 8, "name": "KeysService.rotate()", "fa": "FA-C+", "wave": 3, "complexity": "S" },
+            { "id": 9, "name": "keys rotate command", "fa": "FA-C+", "wave": 3, "complexity": "M" },
+            { "id": 10, "name": "auth mock handler 測試", "fa": "FA-A+", "wave": 4, "complexity": "M" },
+            { "id": 11, "name": "keys mock handler 測試", "fa": "FA-C+", "wave": 4, "complexity": "M" },
+            { "id": 12, "name": "AuthService 測試", "fa": "FA-A+", "wave": 4, "complexity": "S" },
+            { "id": 13, "name": "auth 整合測試", "fa": "FA-A+", "wave": 4, "complexity": "M" },
+            { "id": 14, "name": "keys 整合測試", "fa": "FA-C+", "wave": 4, "complexity": "M" }
+          ],
+          "acceptance_criteria": 14,
+          "solution_summary": "沿用 Command-Service-Client-MockHandler 分層，新增 POST /auth/rotate 和 POST /keys/:hash/rotate 端點。MockStore 引入 revokedManagementKeys 黑名單讓舊 management key 401。Provisioned key rotation 直接更新 MockProvisionedKey.key 欄位。",
+          "assumptions": [
+            "keys rotate 後 hash 不變，只換 key value",
+            "MockStore 不需 provisioned key 黑名單",
+            "auth rotate 支援 --yes 跳過確認"
+          ],
+          "tech_debt": [
+            "MockStore.getEmailForToken() 靜態映射所有 token 到 demo@openclaw.dev",
+            "extractToken()/requireValidToken() 在 auth.mock.ts 和 keys.mock.ts 各自複製"
+          ],
+          "regression_risks": [
+            "isValidToken() 黑名單修改影響現有 handler 測試",
+            "ConfigManager.write() 路徑影響 register/login 測試"
+          ],
+          "risks": [
+            {
+              "type": "MockStore 無狀態策略與 rotation 語義衝突",
+              "level": "High",
+              "description": "MockStore.isValidToken() 是純格式驗證（regex），rotation 後要讓舊 key 立即 401，需要黑名單機制。",
+              "mitigation": "在 MockStore 新增 revokedManagementKeys: Set<string>，isValidToken() 優先檢查黑名單。"
+            },
+            {
+              "type": "環境變數覆蓋 config 的 warning 場景",
+              "level": "Medium",
+              "description": "ConfigManager.resolve() 優先讀取 OPENCLAW_TOKEN_KEY 環境變數，rotation 後環境變數仍是舊 key。",
+              "mitigation": "在 auth rotate command 中偵測環境變數存在時輸出 warning。"
+            },
+            {
+              "type": "P-CLI-003 Store 單例測試隔離",
+              "level": "Low",
+              "description": "新增 rotation 測試必須在 beforeEach 呼叫 reset()，否則黑名單跨測試污染。",
+              "mitigation": "確保 reset() 清除 revokedManagementKeys，所有測試遵守 reset 模式。"
+            }
+          ],
+          "unknowns": [],
+          "dependencies": {
+            "upstream": [
+              "src/mock/store.ts (MockStore.isValidToken — 需擴充)",
+              "src/api/types.ts (需新增 AuthRotateResponse / KeyRotateResponse)",
+              "src/api/endpoints.ts (需新增 AUTH_ROTATE / KEY_ROTATE endpoints)"
+            ],
+            "downstream": [
+              "tests/unit/mock/handlers/auth.mock.test.ts",
+              "tests/unit/mock/handlers/keys.mock.test.ts",
+              "tests/unit/services/auth.service.test.ts",
+              "tests/integration/auth.test.ts",
+              "tests/integration/keys.test.ts"
+            ]
+          }
+        }
+      },
+      "s3": {
+        "status": "completed",
+        "agent": "architect",
+        "completed_at": "2026-03-15T02:45:00+08:00",
+        "output": {
+          "implementation_plan_path": "dev/specs/2026-03-15_1_key-rotation/s3_implementation_plan.md",
+          "total_tasks": 14,
+          "estimated_waves": 4,
+          "ac_coverage": {
+            "total_ac": 14,
+            "covered_ac": 14,
+            "coverage_rate": "100%"
+          },
+          "waves": [
+            {
+              "wave": 1,
+              "name": "基礎設施",
+              "tasks": [
+                { "id": 1, "name": "API 型別定義", "agent": "backend-expert", "dependencies": [], "complexity": "S", "parallel": true, "affected_files": ["src/api/types.ts"] },
+                { "id": 2, "name": "Endpoint 常數", "agent": "backend-expert", "dependencies": [], "complexity": "S", "parallel": true, "affected_files": ["src/api/endpoints.ts"] },
+                { "id": 3, "name": "MockStore 黑名單擴充", "agent": "backend-expert", "dependencies": [], "complexity": "S", "parallel": true, "affected_files": ["src/mock/store.ts"] }
+              ],
+              "parallel": true
+            },
+            {
+              "wave": 2,
+              "name": "FA-A+ auth rotate 核心",
+              "tasks": [
+                { "id": 4, "name": "auth rotate mock handler", "agent": "backend-expert", "dependencies": [1, 2, 3], "complexity": "M", "parallel": true, "affected_files": ["src/mock/handlers/auth.mock.ts"] },
+                { "id": 5, "name": "AuthService.rotate()", "agent": "backend-expert", "dependencies": [1, 2], "complexity": "M", "parallel": true, "affected_files": ["src/services/auth.service.ts"] },
+                { "id": 6, "name": "auth rotate command", "agent": "backend-expert", "dependencies": [5], "complexity": "M", "parallel": false, "affected_files": ["src/commands/auth.ts"] }
+              ],
+              "parallel": "partial (#4 和 #5 並行，#6 需等 #5)"
+            },
+            {
+              "wave": 3,
+              "name": "FA-C+ keys rotate 核心",
+              "tasks": [
+                { "id": 7, "name": "keys rotate mock handler", "agent": "backend-expert", "dependencies": [1, 2], "complexity": "M", "parallel": true, "affected_files": ["src/mock/handlers/keys.mock.ts"] },
+                { "id": 8, "name": "KeysService.rotate()", "agent": "backend-expert", "dependencies": [1, 2], "complexity": "S", "parallel": true, "affected_files": ["src/services/keys.service.ts"] },
+                { "id": 9, "name": "keys rotate command", "agent": "backend-expert", "dependencies": [8], "complexity": "M", "parallel": false, "affected_files": ["src/commands/keys.ts"] }
+              ],
+              "parallel": "partial (#7 和 #8 並行，#9 需等 #8)"
+            },
+            {
+              "wave": 4,
+              "name": "測試補全",
+              "tasks": [
+                { "id": 10, "name": "auth mock handler 測試", "agent": "backend-expert", "dependencies": [4], "complexity": "M", "parallel": true, "affected_files": ["tests/unit/mock/handlers/auth.mock.test.ts"] },
+                { "id": 11, "name": "keys mock handler 測試", "agent": "backend-expert", "dependencies": [7], "complexity": "M", "parallel": true, "affected_files": ["tests/unit/mock/handlers/keys.mock.test.ts"] },
+                { "id": 12, "name": "AuthService 測試", "agent": "backend-expert", "dependencies": [5], "complexity": "S", "parallel": true, "affected_files": ["tests/unit/services/auth.service.test.ts"] },
+                { "id": 13, "name": "auth 整合測試", "agent": "backend-expert", "dependencies": [6], "complexity": "M", "parallel": false, "affected_files": ["tests/integration/auth.test.ts"] },
+                { "id": 14, "name": "keys 整合測試", "agent": "backend-expert", "dependencies": [9], "complexity": "M", "parallel": false, "affected_files": ["tests/integration/keys.test.ts"] }
+              ],
+              "parallel": "partial (#10, #11, #12 並行；#13 依賴 #6；#14 依賴 #9)"
+            }
+          ],
+          "verification": {
+            "static_analysis": ["npx tsc --noEmit"],
+            "unit_tests": ["npm test"],
+            "integration_tests": ["npm test -- --testPathPattern=\"integration\""]
+          }
+        }
+      }
+    }
+  }
+}

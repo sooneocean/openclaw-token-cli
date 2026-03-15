@@ -100,6 +100,53 @@ describe('Keys 完整流程', () => {
     await expect(service.revoke(DEMO_TOKEN, created.hash)).rejects.toThrow('revoked');
   });
 
+  describe('keys rotate', () => {
+    it('rotate 成功並保留設定', async () => {
+      const service = new KeysService({ mock: true });
+      const created = await service.create(DEMO_TOKEN, {
+        name: 'rotate-int', credit_limit: 75, limit_reset: 'daily', expires_at: null,
+      });
+
+      const rotated = await service.rotate(DEMO_TOKEN, created.hash);
+      expect(rotated.key).toMatch(/^sk-prov-/);
+      expect(rotated.key).not.toBe(created.key);
+      expect(rotated.hash).toBe(created.hash);
+      expect(rotated.name).toBe('rotate-int');
+      expect(rotated.credit_limit).toBe(75);
+      expect(rotated.limit_reset).toBe('daily');
+      expect(rotated.rotated_at).toBeTruthy();
+    });
+
+    it('rotate 後 info 仍正常', async () => {
+      const service = new KeysService({ mock: true });
+      const created = await service.create(DEMO_TOKEN, {
+        name: 'rotate-info', credit_limit: 30, limit_reset: null, expires_at: null,
+      });
+
+      await service.rotate(DEMO_TOKEN, created.hash);
+      const info = await service.info(DEMO_TOKEN, created.hash);
+      expect(info.name).toBe('rotate-info');
+      expect(info.credit_limit).toBe(30);
+    });
+
+    it('rotate --json 格式正確', async () => {
+      const service = new KeysService({ mock: true });
+      const created = await service.create(DEMO_TOKEN, {
+        name: 'rotate-json', credit_limit: null, limit_reset: null, expires_at: null,
+      });
+
+      const result = await service.rotate(DEMO_TOKEN, created.hash);
+      expect(result).toHaveProperty('key');
+      expect(result).toHaveProperty('hash');
+      expect(result).toHaveProperty('rotated_at');
+    });
+
+    it('rotate 不存在的 hash 應拋錯', async () => {
+      const service = new KeysService({ mock: true });
+      await expect(service.rotate(DEMO_TOKEN, 'nonexistent')).rejects.toThrow();
+    });
+  });
+
   it('多個 key 並存，list 全部列出', async () => {
     const service = new KeysService({ mock: true });
 

@@ -100,6 +100,33 @@ describe('AuthService (mock mode)', () => {
     });
   });
 
+  describe('rotate', () => {
+    it('returns new key and updates config', async () => {
+      const service = new AuthService({ mock: true });
+
+      // First login to have a config
+      await service.login('demo@openclaw.dev', 'Demo1234!');
+      const configBefore = await ConfigManager.read();
+      const oldKey = configBefore!.management_key;
+
+      const result = await service.rotate(oldKey);
+
+      expect(result.management_key).toMatch(/^sk-mgmt-/);
+      expect(result.management_key).not.toBe(oldKey);
+      expect(result.email).toBe('demo@openclaw.dev');
+      expect(result.rotated_at).toBeTruthy();
+
+      const configAfter = await ConfigManager.read();
+      expect(configAfter!.management_key).toBe(result.management_key);
+      expect(configAfter!.email).toBe('demo@openclaw.dev');
+    });
+
+    it('throws on invalid token', async () => {
+      const service = new AuthService({ mock: true });
+      await expect(service.rotate('invalid-token')).rejects.toThrow();
+    });
+  });
+
   describe('whoami', () => {
     it('returns account info for valid token', async () => {
       const service = new AuthService({ mock: true });

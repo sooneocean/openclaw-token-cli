@@ -676,7 +676,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **複雜度**: M
 - **Agent**: node-expert
 - **依賴**: Task #16
-- **描述**: CLI 整合測試採 **in-process** 架構：透過 program factory（`createProgram({ store: mockStore })`）直接在 vitest 程序內初始化 Commander instance，注入共享的 MockStore 實例，驗證完整 user flow 狀態連續性（register → buy credits → create key → integrate）。**execa 僅保留 smoke test** — 確認 binary 可執行、`--help` 輸出正確、process.exit code 符合預期；不以 execa 執行完整業務流程。
+- **描述**: CLI 整合測試採 **in-process** 架構：透過 program factory（`createProgram(mockStore)`）直接在 vitest 程序內初始化 Commander instance，注入共享的 MockStore 實例，驗證完整 user flow 狀態連續性（register → buy credits → create key → integrate）。**execa 僅保留 smoke test** — 確認 binary 可執行、`--help` 輸出正確、process.exit code 符合預期；不以 execa 執行完整業務流程。
 - **DoD**:
   - [ ] FA-A: register → whoami → logout → login 完整流程（in-process，共享 MockStore）
   - [ ] FA-B: balance → buy → history → auto-topup 完整流程（in-process，共享 MockStore）
@@ -759,7 +759,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 | 16 | 撤銷 key | 已有 key | 執行 `keys revoke <hash>` → 確認 | Key 已停用 | P1 | FA-C |
 | 17 | 一鍵整合 | 已有 provisioned key + OpenClaw 已安裝 | 執行 `integrate` | Fallback provider 已注入 openclaw.json | P0 | FA-D |
 | 18 | 移除整合 | 已整合 | 執行 `integrate --remove` | Fallback provider 已移除 | P1 | FA-D |
-| 19 | 整合狀態 | 已整合 | 執行 `integrate --status` | 顯示整合狀態 + fallback chain；若 key 已撤銷或停用則顯示警告 | P1 | FA-D |
+| 19 | 整合狀態 | 已整合 | 執行 `integrate --status` | 顯示整合狀態 + fallback chain；若 key 已撤銷則顯示警告 | P1 | FA-D |
 | 20 | 未認證操作 | 無 config | 執行 `credits balance` | 顯示 "Not logged in. Run: openclaw-token auth login" | P0 | 全域 |
 | 21 | API 不可達 | 已登入、網路斷線 | 執行任何 API 指令 | 顯示友善錯誤 + 建議重試 | P1 | 全域 |
 | 22 | JSON 輸出 | 已登入 | 執行 `credits balance --json` | 輸出 valid JSON | P0 | 全域 |

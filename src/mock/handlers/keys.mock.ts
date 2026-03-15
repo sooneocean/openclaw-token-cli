@@ -186,6 +186,45 @@ export function registerKeysHandlers(router: MockRouter): void {
     };
   });
 
+  // POST /keys/:hash/rotate
+  router.register('POST', '/keys/:hash/rotate', (req: MockRequest, store: MockStore): MockResponse => {
+    const result = requireValidToken(req, store);
+    if (typeof result !== 'string') return result;
+    const email = result;
+
+    const hash = req.query?.hash;
+    const keys = getKeysForEmail(store, email);
+    const key = hash ? keys.find((k) => k.hash === hash) : undefined;
+
+    if (!key) {
+      return { status: 404, data: { error: { code: 'KEY_NOT_FOUND', message: 'Key not found' } } };
+    }
+    if (key.revoked) {
+      return { status: 410, data: { error: { code: 'KEY_REVOKED', message: 'Cannot rotate a revoked key' } } };
+    }
+
+    const newKeyValue = store.generateProvisionedKey();
+    key.key = newKeyValue;
+
+    return {
+      status: 200,
+      data: {
+        data: {
+          key: newKeyValue,
+          hash: key.hash,
+          name: key.name,
+          credit_limit: key.credit_limit,
+          limit_reset: key.limit_reset,
+          usage: key.usage,
+          disabled: key.disabled,
+          created_at: key.created_at,
+          expires_at: key.expires_at,
+          rotated_at: new Date().toISOString(),
+        },
+      },
+    };
+  });
+
   // DELETE /keys/:hash
   router.register('DELETE', '/keys/:hash', (req: MockRequest, store: MockStore): MockResponse => {
     const result = requireValidToken(req, store);

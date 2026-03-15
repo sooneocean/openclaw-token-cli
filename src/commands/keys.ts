@@ -150,6 +150,50 @@ export function createKeysCommand(): Command {
     });
 
   keys
+    .command('rotate')
+    .description('Rotate a provisioned key (old key value immediately invalidated)')
+    .argument('<hash>', 'Key hash')
+    .option('--yes', 'Skip confirmation', false)
+    .action(async (hash, cmdOpts) => {
+      const opts = getGlobalOptions();
+      const token = await requireAuth();
+
+      if (!cmdOpts.yes) {
+        const confirmed = await confirm({ message: `Rotate key ${hash}? The old key value will be immediately invalidated.` });
+        if (!confirmed) {
+          output('Cancelled.');
+          return;
+        }
+      }
+
+      const service = new KeysService({ mock: opts.mock, verbose: opts.verbose });
+      const result = await withSpinner('Rotating key...', () => service.rotate(token, hash));
+
+      if (result.disabled) {
+        warn('Note: This key is currently disabled.');
+      }
+
+      if (opts.json) {
+        output(result, { json: true });
+      } else {
+        warn('This key will only be shown ONCE. Save it now!');
+        const table = createTable(
+          ['Field', 'Value'],
+          [
+            ['Key', result.key],
+            ['Hash', result.hash],
+            ['Name', result.name],
+            ['Credit Limit', result.credit_limit !== null ? `$${result.credit_limit.toFixed(2)}` : 'Unlimited'],
+            ['Limit Reset', result.limit_reset || 'None'],
+            ['Rotated At', result.rotated_at],
+          ],
+        );
+        output(table);
+        success(`Key ${hash} rotated successfully.`);
+      }
+    });
+
+  keys
     .command('revoke')
     .description('Revoke a key')
     .argument('<hash>', 'Key hash')

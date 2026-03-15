@@ -145,6 +145,26 @@ export interface KeyUpdateRequest {
   disabled?: boolean;
 }
 
+// Key Rotation
+export interface AuthRotateResponse {
+  management_key: string;
+  email: string;
+  rotated_at: string;
+}
+
+export interface KeyRotateResponse {
+  key: string;
+  hash: string;
+  name: string;
+  credit_limit: number | null;
+  limit_reset: 'daily' | 'weekly' | 'monthly' | null;
+  usage: number;
+  disabled: boolean;
+  created_at: string;
+  expires_at: string | null;
+  rotated_at: string;
+}
+
 // OAuth Device Flow
 export interface OAuthDeviceCodeRequest {
   client_id: string;

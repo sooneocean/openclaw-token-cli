@@ -1,6 +1,6 @@
 import { createApiClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { ApiResponse, ProvisionedKey, KeyDetailResponse, KeysListResponse, KeyRevokeResponse, CreateKeyRequest, KeyUpdateRequest } from '../api/types.js';
+import type { ApiResponse, ProvisionedKey, KeyDetailResponse, KeysListResponse, KeyRevokeResponse, KeyRotateResponse, CreateKeyRequest, KeyUpdateRequest } from '../api/types.js';
 import { ConfigManager } from '../config/manager.js';
 
 export interface KeysServiceOptions {
@@ -47,6 +47,12 @@ export class KeysService {
   async update(token: string, hash: string, params: KeyUpdateRequest): Promise<ProvisionedKey> {
     const client = await this.getClient(token);
     const resp = await client.patch<ApiResponse<ProvisionedKey>>(ENDPOINTS.KEY_DETAIL(hash), params);
+    return resp.data.data;
+  }
+
+  async rotate(token: string, hash: string): Promise<KeyRotateResponse> {
+    const client = await this.getClient(token);
+    const resp = await client.post<ApiResponse<KeyRotateResponse>>(ENDPOINTS.KEY_ROTATE(hash), {});
     return resp.data.data;
   }
 

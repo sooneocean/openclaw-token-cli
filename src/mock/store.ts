@@ -76,6 +76,7 @@ export class MockStore {
   autoTopup = new Map<string, MockAutoTopupConfig>();
   idempotencyKeys = new Map<string, unknown>();
   oauthSessions = new Map<string, MockOAuthSession>();
+  revokedManagementKeys = new Set<string>();
 
   constructor(initialState?: Partial<MockStoreState>) {
     if (initialState) {
@@ -112,10 +113,12 @@ export class MockStore {
     this.idempotencyKeys.clear();
     this.autoTopup.clear();
     this.oauthSessions.clear();
+    this.revokedManagementKeys.clear();
     this.initDefaults();
   }
 
   isValidToken(token: string): boolean {
+    if (this.revokedManagementKeys.has(token)) return false;
     return /^sk-mgmt-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
   }
 

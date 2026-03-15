@@ -4,7 +4,7 @@ import { AuthService } from '../services/auth.service.js';
 import { OAuthService } from '../services/oauth.service.js';
 import { requireAuth } from '../utils/auth-guard.js';
 import { getGlobalOptions } from '../index.js';
-import { output, success } from '../output/formatter.js';
+import { output, success, warn } from '../output/formatter.js';
 import { createTable } from '../output/table.js';
 import { withSpinner } from '../output/spinner.js';
 
@@ -81,6 +81,57 @@ export function createAuthCommand(): Command {
         output({ success: true }, { json: true });
       } else {
         success('Logged out successfully.');
+      }
+    });
+
+  auth
+    .command('rotate')
+    .description('Rotate management key (old key immediately invalidated)')
+    .option('--yes', 'Skip confirmation', false)
+    .action(async (cmdOpts) => {
+      const opts = getGlobalOptions();
+      const token = await requireAuth();
+
+      if (!cmdOpts.yes) {
+        const confirmed = await confirm({
+          message: 'Rotate your management key? The old key will be immediately invalidated.',
+        });
+        if (!confirmed) {
+          output('Cancelled.');
+          return;
+        }
+      }
+
+      const service = new AuthService({ mock: opts.mock, verbose: opts.verbose });
+
+      try {
+        const result = await withSpinner('Rotating management key...', () => service.rotate(token));
+
+        if (process.env.OPENCLAW_TOKEN_KEY) {
+          warn('Update your OPENCLAW_TOKEN_KEY environment variable with the new key.');
+        }
+
+        if (opts.json) {
+          output(result, { json: true });
+        } else {
+          warn('This key will only be shown ONCE. Save it now!');
+          const table = createTable(
+            ['Field', 'Value'],
+            [
+              ['Management Key', result.management_key],
+              ['Email', result.email],
+              ['Rotated At', result.rotated_at],
+            ],
+          );
+          output(table);
+          success('Management key rotated successfully.');
+        }
+      } catch (err: unknown) {
+        const isNetworkError = err instanceof Error && ('code' in err || err.message.includes('timeout') || err.message.includes('ECONNREFUSED'));
+        if (isNetworkError) {
+          throw new Error('Rotation status unknown. Run `auth whoami` to check your current key.');
+        }
+        throw new Error('Rotation failed. Your current key is still valid.');
       }
     });
 

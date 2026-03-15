@@ -80,4 +80,37 @@ describe('Auth 完整流程', () => {
     const service = new AuthService({ mock: true });
     await expect(service.login('demo@openclaw.dev', 'WrongPassword1!')).rejects.toThrow('Session expired');
   });
+
+  describe('auth rotate', () => {
+    it('rotate 後 config 更新為新 key', async () => {
+      const service = new AuthService({ mock: true });
+      const loginResult = await service.login('demo@openclaw.dev', 'Demo1234!');
+
+      const rotateResult = await service.rotate(loginResult.management_key);
+      expect(rotateResult.management_key).toMatch(/^sk-mgmt-/);
+      expect(rotateResult.management_key).not.toBe(loginResult.management_key);
+
+      const config = await ConfigManager.read();
+      expect(config!.management_key).toBe(rotateResult.management_key);
+    });
+
+    it('rotate 後新 key 可用於 whoami', async () => {
+      const service = new AuthService({ mock: true });
+      const loginResult = await service.login('demo@openclaw.dev', 'Demo1234!');
+
+      const rotateResult = await service.rotate(loginResult.management_key);
+      const me = await service.whoami(rotateResult.management_key);
+      expect(me.email).toBe('demo@openclaw.dev');
+    });
+
+    it('rotate --json 格式正確', async () => {
+      const service = new AuthService({ mock: true });
+      const loginResult = await service.login('demo@openclaw.dev', 'Demo1234!');
+
+      const result = await service.rotate(loginResult.management_key);
+      expect(result).toHaveProperty('management_key');
+      expect(result).toHaveProperty('email');
+      expect(result).toHaveProperty('rotated_at');
+    });
+  });
 });

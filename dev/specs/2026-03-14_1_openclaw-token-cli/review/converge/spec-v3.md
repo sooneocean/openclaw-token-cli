@@ -428,7 +428,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **依賴**: Task #1
 - **描述**: 實作 `api/client.ts` — 建立 axios instance factory，支援兩種模式：(1) Real mode：直接打 API base URL，(2) Mock mode：使用自訂 adapter 路由到 mock handlers。透過 `createApiClient(options)` factory pattern 切換。加入 request interceptor 自動附加 `Authorization: Bearer <key>` header，以及 response interceptor 統一錯誤轉換。`api/endpoints.ts` 定義所有 path 常數。`api/types.ts` 定義所有 request/response 型別。
 - **DoD**:
-  - [ ] `createApiClient({ mock: true, store?: MockStore })` 回傳 mock adapter client，store 參數用於注入 MockStore 實例（未傳時使用預設 singleton）
+  - [ ] `createApiClient({ mock: true })` 回傳 mock adapter client
   - [ ] `createApiClient({ mock: false, baseURL, token })` 回傳 real client
   - [ ] Request interceptor 自動加 Authorization header
   - [ ] Response interceptor 將 4xx/5xx 轉為 `APIError`
@@ -645,7 +645,7 @@ interface KeyDetailResponse extends ProvisionedKey {
   - [ ] `integrate` — 偵測 OpenClaw → 選擇/建立 key → 注入 fallback → 驗證
   - [ ] `integrate` — 若 `fallback_chain` 已含 `type === "openclaw-token"` 項目，先移除再注入新項目（upsert 語意），顯示 `Updated existing integration.`
   - [ ] `integrate` — OpenClaw 未安裝時顯示安裝指引
-  - [ ] `integrate` — 無 provisioned key 時自動建立（預設 name: `openclaw-integration`，credit_limit: null（無限制），不 prompt 用戶）
+  - [ ] `integrate` — 無 provisioned key 時自動建立
   - [ ] `integrate --remove` — 從 OpenClaw config 移除 fallback provider
   - [ ] `integrate --status` — 顯示整合狀態 + fallback chain；若整合的 key 已被撤銷/停用，顯示警告但不自動修改 config
   - [ ] Atomic write 寫回 openclaw.json
@@ -676,7 +676,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 - **複雜度**: M
 - **Agent**: node-expert
 - **依賴**: Task #16
-- **描述**: CLI 整合測試採 **in-process** 架構：透過 program factory（`createProgram({ store: mockStore })`）直接在 vitest 程序內初始化 Commander instance，注入共享的 MockStore 實例，驗證完整 user flow 狀態連續性（register → buy credits → create key → integrate）。**execa 僅保留 smoke test** — 確認 binary 可執行、`--help` 輸出正確、process.exit code 符合預期；不以 execa 執行完整業務流程。
+- **描述**: CLI 整合測試採 **in-process** 架構：透過 program factory（`createProgram(mockStore)`）直接在 vitest 程序內初始化 Commander instance，注入共享的 MockStore 實例，驗證完整 user flow 狀態連續性（register → buy credits → create key → integrate）。**execa 僅保留 smoke test** — 確認 binary 可執行、`--help` 輸出正確、process.exit code 符合預期；不以 execa 執行完整業務流程。
 - **DoD**:
   - [ ] FA-A: register → whoami → logout → login 完整流程（in-process，共享 MockStore）
   - [ ] FA-B: balance → buy → history → auto-topup 完整流程（in-process，共享 MockStore）
@@ -759,7 +759,7 @@ interface KeyDetailResponse extends ProvisionedKey {
 | 16 | 撤銷 key | 已有 key | 執行 `keys revoke <hash>` → 確認 | Key 已停用 | P1 | FA-C |
 | 17 | 一鍵整合 | 已有 provisioned key + OpenClaw 已安裝 | 執行 `integrate` | Fallback provider 已注入 openclaw.json | P0 | FA-D |
 | 18 | 移除整合 | 已整合 | 執行 `integrate --remove` | Fallback provider 已移除 | P1 | FA-D |
-| 19 | 整合狀態 | 已整合 | 執行 `integrate --status` | 顯示整合狀態 + fallback chain；若 key 已撤銷或停用則顯示警告 | P1 | FA-D |
+| 19 | 整合狀態 | 已整合 | 執行 `integrate --status` | 顯示整合狀態 + fallback chain；若 key 已撤銷則顯示警告 | P1 | FA-D |
 | 20 | 未認證操作 | 無 config | 執行 `credits balance` | 顯示 "Not logged in. Run: openclaw-token auth login" | P0 | 全域 |
 | 21 | API 不可達 | 已登入、網路斷線 | 執行任何 API 指令 | 顯示友善錯誤 + 建議重試 | P1 | 全域 |
 | 22 | JSON 輸出 | 已登入 | 執行 `credits balance --json` | 輸出 valid JSON | P0 | 全域 |
