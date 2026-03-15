@@ -8,4 +8,7 @@ export const ENDPOINTS = {
   CREDITS_AUTO_TOPUP: '/credits/auto-topup',
   KEYS: '/keys',
   KEY_DETAIL: (hash: string) => `/keys/${hash}`,
+  OAUTH_DEVICE_CODE: '/oauth/device/code',
+  OAUTH_DEVICE_TOKEN: '/oauth/device/token',
+  OAUTH_USERINFO: '/oauth/userinfo',
 } as const;

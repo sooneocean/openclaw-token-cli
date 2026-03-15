@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { input, password, confirm } from '@inquirer/prompts';
 import { AuthService } from '../services/auth.service.js';
+import { OAuthService } from '../services/oauth.service.js';
 import { requireAuth } from '../utils/auth-guard.js';
 import { getGlobalOptions } from '../index.js';
 import { output, success } from '../output/formatter.js';
@@ -36,18 +37,35 @@ export function createAuthCommand(): Command {
   auth
     .command('login')
     .description('Login to existing account')
-    .action(async () => {
+    .option('--github', 'Login with GitHub (OAuth Device Flow)')
+    .action(async (_opts, cmd) => {
+      const loginOpts = cmd.opts();
       const opts = getGlobalOptions();
-      const email = await input({ message: 'Email:' });
-      const pwd = await password({ message: 'Password:' });
 
-      const service = new AuthService({ mock: opts.mock, verbose: opts.verbose });
-      const result = await withSpinner('Logging in...', () => service.login(email, pwd));
+      if (loginOpts.github) {
+        // OAuth Device Flow
+        const service = new OAuthService({ mock: opts.mock, verbose: opts.verbose });
+        const result = await service.loginWithGitHub();
 
-      if (opts.json) {
-        output(result, { json: true });
+        if (opts.json) {
+          output(result, { json: true });
+        } else {
+          const mergeNote = result.merged ? ' (account merged)' : '';
+          success(`Logged in as ${result.email}${mergeNote}`);
+        }
       } else {
-        success(`Logged in as ${result.email}`);
+        // Existing email/password flow
+        const email = await input({ message: 'Email:' });
+        const pwd = await password({ message: 'Password:' });
+
+        const service = new AuthService({ mock: opts.mock, verbose: opts.verbose });
+        const result = await withSpinner('Logging in...', () => service.login(email, pwd));
+
+        if (opts.json) {
+          output(result, { json: true });
+        } else {
+          success(`Logged in as ${result.email}`);
+        }
       }
     });
 

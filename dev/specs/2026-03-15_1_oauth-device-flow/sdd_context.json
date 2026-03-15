@@ -1,0 +1,405 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "oauth-device-flow",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_1_oauth-device-flow",
+    "work_type": "new_feature",
+    "status": "completed",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-15T10:00:00+08:00",
+    "completed_at": "2026-03-15T15:30:00+08:00",
+    "last_updated": "2026-03-15T15:30:00+08:00",
+    "last_updated_by": "git-operator",
+    "lessons_learned": {
+      "what_went_well": [
+        "S2 Spec Review 攔截到 3 個 P0（configSchema 必填欄位、mapApiError 吞 error code、MockUser.password 必填），避免 S4 實作時才發現",
+        "Wave 1~4 並行調度有效——W1 三任務並行、W4 四個測試 agent 並行，顯著加速",
+        "sleep 依賴注入策略讓 114 個測試在 6.8 秒內完成，輪詢測試零等待",
+        "S5 攔截 command injection 風險（exec → execFile），安全性提升"
+      ],
+      "what_went_wrong": [
+        "S4 實作的 oauth.mock.ts 有預生成 access_token 的 dead code（generateAccessToken 呼叫後 void），S5 才發現",
+        "AC-5 spinner+倒數未實作（簡化為 stderr 直接輸出），spec 與實作有落差"
+      ],
+      "new_pitfalls": [
+        {
+          "id": "P-CLI-005",
+          "tag": "cli/errors",
+          "title": "mapApiError default case 丟失 errorCode",
+          "description": "mapApiError() 的 default case 原本只回傳 message，不保留 errorCode。任何需要根據 error code 做分支邏輯的功能（如 OAuth pollForToken）都會失敗。",
+          "mitigation": "CLIError 已新增 code?: string 屬性，mapApiError default case 已修正。未來新增需要 error code 分支的功能時，確認 CLIError.code 有正確傳遞。"
+        },
+        {
+          "id": "P-CLI-006",
+          "tag": "cli/security",
+          "title": "child_process.exec 的 command injection 風險",
+          "description": "使用 exec() 拼接 URL 開啟瀏覽器有 command injection 風險，即使 URL 看起來是固定值。",
+          "mitigation": "使用 execFile() 替代 exec()，參數以陣列傳入避免 shell 解析。"
+        }
+      ],
+      "captured_at": "2026-03-15T15:30:00+08:00"
+    },
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "completed_at": "2026-03-15T10:00:00+08:00",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_1_oauth-device-flow/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "加入 GitHub OAuth Device Flow 作為替代認證方式",
+          "pain_points": ["開發者不想再記一組密碼", "CLI 登入體驗不夠現代"],
+          "goal": "提供 auth login --github 命令，走 Device Flow 完成 GitHub 授權，換發 management_key",
+          "success_criteria": [
+            "auth login --github 觸發 device flow",
+            "輪詢成功後儲存 management_key",
+            "同 email 帳號自動合併",
+            "現有 auth login 不受影響",
+            "--json 和 --mock flag 正常運作"
+          ],
+          "scope_in": [
+            "FA-A: auth login --github + OAuthService + device flow",
+            "FA-B: Mock OAuth 三端點 + 帳號合併",
+            "全域: 單元測試 + 整合測試"
+          ],
+          "scope_out": ["真實 GitHub OAuth App", "其他 OAuth provider", "Token refresh/rotation", "Web 授權回調頁面", "帳號解綁"],
+          "constraints": ["Mock backend", "僅 GitHub", "依賴現有 MockStore", "Device Flow 需瀏覽器"],
+          "functional_areas": [
+            {"id": "FA-A", "name": "OAuth Device Flow", "description": "CLI 觸發 device flow、顯示 code、輪詢授權、換發 management_key", "independence": "medium"},
+            {"id": "FA-B", "name": "Mock OAuth Backend", "description": "模擬 GitHub device flow 端點、帳號合併邏輯", "independence": "medium"}
+          ],
+          "decomposition_strategy": "single_sop",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "started_at": "2026-03-15T10:05:00+08:00",
+        "completed_at": "2026-03-15T11:00:00+08:00",
+        "output": {
+          "completed_phases": [1, 2, 3],
+          "dev_spec_path": "dev/specs/2026-03-15_1_oauth-device-flow/s1_dev_spec.md",
+          "solution_summary": "新增 OAuthService + 3 個 mock OAuth 端點，走 Device Flow 換發 management_key，支援帳號合併",
+          "impact_scope": {
+            "modified_files": [
+              "src/commands/auth.ts", "src/mock/index.ts", "src/api/endpoints.ts",
+              "src/api/types.ts", "src/mock/store.ts",
+              "src/errors/base.ts", "src/errors/api.ts", "src/mock/handlers/auth.mock.ts"
+            ],
+            "new_files": [
+              "src/services/oauth.service.ts", "src/mock/handlers/oauth.mock.ts",
+              "src/utils/sleep.ts",
+              "tests/unit/mock/handlers/oauth.mock.test.ts",
+              "tests/unit/services/oauth.service.test.ts",
+              "tests/integration/oauth.test.ts"
+            ],
+            "layers": ["CLI Commands", "Services", "API Client", "Mock Backend", "Config", "Error Handling"]
+          },
+          "tasks": [
+            {"id": 1, "name": "基礎設施：types + endpoints + sleep", "complexity": "S", "wave": "W1"},
+            {"id": "1b", "name": "錯誤處理擴充：CLIError.code + mapApiError", "complexity": "S", "wave": "W1"},
+            {"id": 2, "name": "MockStore 擴充 + MockUser.password 可選", "complexity": "S", "wave": "W1"},
+            {"id": 3, "name": "OAuth mock handlers + auth.mock password 檢查", "complexity": "M", "wave": "W2"},
+            {"id": 4, "name": "註冊 OAuth handlers 到 router", "complexity": "S", "wave": "W2"},
+            {"id": 5, "name": "OAuthService 實作", "complexity": "L", "wave": "W3"},
+            {"id": 6, "name": "auth.ts 命令層整合", "complexity": "M", "wave": "W3"},
+            {"id": 7, "name": "OAuth mock handler 單元測試", "complexity": "M", "wave": "W4"},
+            {"id": 8, "name": "OAuthService 單元測試", "complexity": "M", "wave": "W4"},
+            {"id": 9, "name": "OAuth 整合測試", "complexity": "M", "wave": "W4"},
+            {"id": 10, "name": "既有測試回歸驗證", "complexity": "S", "wave": "W4"}
+          ],
+          "acceptance_criteria": [
+            "AC-1: auth login --github 顯示 user_code + verification_uri",
+            "AC-2: 登入成功儲存 management_key",
+            "AC-3: whoami 顯示 GitHub email",
+            "AC-4: 自動開啟瀏覽器（best effort）",
+            "AC-5: spinner + 倒數",
+            "AC-6: device code 過期提示",
+            "AC-7: 用戶拒絕授權提示",
+            "AC-8: Ctrl+C 正常退出",
+            "AC-9: device/code 回傳完整結構",
+            "AC-10: device/token 狀態轉換",
+            "AC-11: userinfo 回傳用戶資訊",
+            "AC-12: 同 email 帳號合併",
+            "AC-13: 新 email 建立新帳號",
+            "AC-14: 現有 auth login 不受影響",
+            "AC-15: --json 輸出 valid JSON",
+            "AC-16: --mock 正常運作"
+          ],
+          "risks": [
+            {"risk": "MockStore stateless 策略與帳號合併衝突", "level": "high", "mitigation": "合併邏輯在 handler 中操作 store.users"},
+            {"risk": "輪詢迴圈干擾測試", "level": "high", "mitigation": "sleep 依賴注入"},
+            {"risk": "mapApiError 吞掉 error code", "level": "high", "mitigation": "Task #1b 擴充 CLIError.code"},
+            {"risk": "management_key 格式不符", "level": "high", "mitigation": "統一使用 store.generateManagementKey()"}
+          ],
+          "regression_risks": [
+            "auth login 加 --github option 不影響不帶 flag 的行為",
+            "mock/index.ts 新增 handler 不影響路由匹配順序",
+            "MockStore.reset() 新增 oauthSessions.clear() 不影響既有測試",
+            "MockUser.password 改為可選不影響既有 register/login handler",
+            "CLIError 新增 code 屬性不影響既有 error handling"
+          ]
+        }
+      },
+      "s2": {
+        "status": "completed",
+        "agents": ["orchestrator", "codebase-explorer", "architect"],
+        "completed_at": "2026-03-15T12:00:00+08:00",
+        "output": {
+          "review_report_path": "dev/specs/2026-03-15_1_oauth-device-flow/s2_review_report.md",
+          "result": "conditional_pass",
+          "engine_used": "opus_fallback",
+          "findings": {"p0": 2, "p1": 2, "p2": 7},
+          "fixes_applied": [
+            "SR-P0-001: ConfigManager.write() 補齊 5 個必填欄位映射",
+            "SR-P0-003: 新增 Task #1b — CLIError.code + mapApiError 修正",
+            "SR-P1-003: MockUser.password 改為可選 + auth.mock password 檢查",
+            "SR-P1-005: 影響範圍加入 errors/base.ts + errors/api.ts + auth.mock.ts"
+          ],
+          "spec_modified": true,
+          "pre_review": {
+            "agents": ["codebase-explorer"],
+            "findings": {"p0": 0, "p1": 3, "p2": 1}
+          }
+        }
+      },
+      "s3": {
+        "status": "completed",
+        "agent": "architect",
+        "completed_at": "2026-03-15T13:00:00+08:00",
+        "output": {
+          "implementation_plan_path": "dev/specs/2026-03-15_1_oauth-device-flow/s3_implementation_plan.md",
+          "total_tasks": 11,
+          "estimated_waves": 4,
+          "ac_coverage": "16/16 (100%)",
+          "waves": [
+            {
+              "wave": 1,
+              "name": "基礎設施（並行）",
+              "parallel": true,
+              "tasks": [
+                {
+                  "id": 1, "name": "基礎設施：types + endpoints + sleep",
+                  "agent": "backend-expert", "dependencies": [], "complexity": "S",
+                  "dod": ["5 個 OAuth interfaces", "3 個端點常數", "sleep.ts 存在"],
+                  "parallel": true,
+                  "affected_files": ["src/api/types.ts", "src/api/endpoints.ts", "src/utils/sleep.ts"],
+                  "tdd_plan": null,
+                  "skip_justification": "純型別定義/常數新增，無可測邏輯"
+                },
+                {
+                  "id": "1b", "name": "錯誤處理擴充：CLIError.code + mapApiError",
+                  "agent": "backend-expert", "dependencies": [], "complexity": "S",
+                  "dod": ["CLIError.code?: string", "mapApiError default case 保留 errorCode"],
+                  "parallel": true,
+                  "affected_files": ["src/errors/base.ts", "src/errors/api.ts"],
+                  "tdd_plan": null,
+                  "skip_justification": "純型別定義/常數新增，無可測邏輯"
+                },
+                {
+                  "id": 2, "name": "MockStore 擴充 oauthSessions + MockUser.password 可選",
+                  "agent": "backend-expert", "dependencies": [], "complexity": "S",
+                  "dod": ["MockOAuthSession interface", "oauthSessions Map", "reset() 清除", "三個 generate helpers"],
+                  "parallel": true,
+                  "affected_files": ["src/mock/store.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/mock/store.test.ts",
+                    "test_cases": ["generateDeviceCode 格式", "generateUserCode 格式", "generateAccessToken 格式", "reset 清除 oauthSessions"],
+                    "test_command": "npm test -- --testPathPattern=\"store.test\""
+                  }
+                }
+              ]
+            },
+            {
+              "wave": 2,
+              "name": "Mock Backend",
+              "parallel": false,
+              "tasks": [
+                {
+                  "id": 3, "name": "OAuth mock handlers + auth.mock login password 檢查",
+                  "agent": "backend-expert", "dependencies": [1, "1b", 2], "complexity": "M",
+                  "dod": ["registerOAuthHandlers factory pattern", "三端點完整實作", "auth.mock password 防禦"],
+                  "parallel": false,
+                  "affected_files": ["src/mock/handlers/oauth.mock.ts", "src/mock/handlers/auth.mock.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/mock/handlers/oauth.mock.test.ts",
+                    "test_cases": ["10 個 test case（Task #7 實作）"],
+                    "test_command": "npm test -- --testPathPattern=\"oauth.mock.test\""
+                  }
+                },
+                {
+                  "id": 4, "name": "註冊 OAuth handlers 到 router",
+                  "agent": "backend-expert", "dependencies": [3], "complexity": "S",
+                  "dod": ["mock/index.ts import + 呼叫"],
+                  "parallel": false,
+                  "affected_files": ["src/mock/index.ts"],
+                  "tdd_plan": null,
+                  "skip_justification": "一行 import + 呼叫，由 Task #9 整合測試覆蓋"
+                }
+              ]
+            },
+            {
+              "wave": 3,
+              "name": "服務層 + CLI",
+              "parallel": false,
+              "tasks": [
+                {
+                  "id": 5, "name": "OAuthService 實作",
+                  "agent": "backend-expert", "dependencies": [1, "1b"], "complexity": "L",
+                  "dod": ["requestDeviceCode/pollForToken/fetchUserInfo/loginWithGitHub", "Config 5 欄位", "sleepFn 注入"],
+                  "parallel": false,
+                  "affected_files": ["src/services/oauth.service.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/services/oauth.service.test.ts",
+                    "test_cases": ["8 個 test case（Task #8 實作）"],
+                    "test_command": "npm test -- --testPathPattern=\"oauth.service.test\""
+                  }
+                },
+                {
+                  "id": 6, "name": "auth.ts 命令層整合",
+                  "agent": "backend-expert", "dependencies": [5], "complexity": "M",
+                  "dod": ["--github option", "OAuthService 呼叫", "既有流程不變", "--json 支援"],
+                  "parallel": false,
+                  "affected_files": ["src/commands/auth.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/oauth.test.ts",
+                    "test_cases": ["--json 輸出 valid JSON", "auth login 不帶 --github 行為不變"],
+                    "test_command": "npm test -- --testPathPattern=\"oauth.test\""
+                  }
+                }
+              ]
+            },
+            {
+              "wave": 4,
+              "name": "測試（並行）",
+              "parallel": true,
+              "tasks": [
+                {
+                  "id": 7, "name": "OAuth mock handler 單元測試",
+                  "agent": "backend-expert", "dependencies": [3], "complexity": "M",
+                  "dod": ["10 test case 通過", "MockStore 隔離"],
+                  "parallel": true,
+                  "affected_files": ["tests/unit/mock/handlers/oauth.mock.test.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/mock/handlers/oauth.mock.test.ts",
+                    "test_cases": ["device/code 成功", "無 client_id 400", "authorization_pending", "access_token", "expired_token", "bad_device_code", "新用戶建立", "既有用戶合併", "email 為空 400", "token 無效 401"],
+                    "test_command": "npm test -- --testPathPattern=\"oauth.mock.test\""
+                  }
+                },
+                {
+                  "id": 8, "name": "OAuthService 單元測試",
+                  "agent": "backend-expert", "dependencies": [5], "complexity": "M",
+                  "dod": ["8 test case 通過", "sleepFn mock"],
+                  "parallel": true,
+                  "affected_files": ["tests/unit/services/oauth.service.test.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/services/oauth.service.test.ts",
+                    "test_cases": ["requestDeviceCode 成功", "pollForToken pending→token", "slow_down interval+5", "expired_token 拋錯", "access_denied 拋錯", "網路錯誤重試 3 次", "fetchUserInfo 成功", "fetchUserInfo email 為空"],
+                    "test_command": "npm test -- --testPathPattern=\"oauth.service.test\""
+                  }
+                },
+                {
+                  "id": 9, "name": "OAuth 整合測試",
+                  "agent": "backend-expert", "dependencies": [4, 6], "complexity": "M",
+                  "dod": ["5 整合測試通過", "temp config dir 隔離"],
+                  "parallel": true,
+                  "affected_files": ["tests/integration/oauth.test.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/oauth.test.ts",
+                    "test_cases": ["新用戶完整流程", "帳號合併", "whoami 正常", "--json 輸出", "合併後 password login 有效"],
+                    "test_command": "npm test -- --testPathPattern=\"oauth.test\""
+                  }
+                },
+                {
+                  "id": 10, "name": "既有測試回歸驗證",
+                  "agent": "backend-expert", "dependencies": [4, 6], "complexity": "S",
+                  "dod": ["npm test 全量通過", "零失敗"],
+                  "parallel": true,
+                  "affected_files": [],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/auth.test.ts（重點）",
+                    "test_cases": ["email/password login 回歸", "mock handler 路由不衝突"],
+                    "test_command": "npm test"
+                  }
+                }
+              ]
+            }
+          ],
+          "verification": {
+            "static_analysis": ["npx tsc --noEmit"],
+            "unit_tests": ["npm test -- --testPathPattern=\"(oauth|store)\""],
+            "integration_tests": ["npm test -- --testPathPattern=\"oauth.test\""],
+            "regression": ["npm test"]
+          }
+        }
+      },
+      "s4": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "started_at": "2026-03-15T13:30:00+08:00",
+        "completed_at": "2026-03-15T14:00:00+08:00",
+        "output": {
+          "completed_tasks": [1, "1b", 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "total_tests": 114,
+          "tests_passed": 114,
+          "build_status": "pass",
+          "changes": {
+            "new_files": [
+              "src/services/oauth.service.ts",
+              "src/mock/handlers/oauth.mock.ts",
+              "src/utils/sleep.ts",
+              "tests/unit/mock/handlers/oauth.mock.test.ts",
+              "tests/unit/services/oauth.service.test.ts",
+              "tests/integration/oauth.test.ts"
+            ],
+            "modified_files": [
+              "src/api/types.ts",
+              "src/api/endpoints.ts",
+              "src/errors/base.ts",
+              "src/errors/api.ts",
+              "src/mock/store.ts",
+              "src/mock/handlers/auth.mock.ts",
+              "src/mock/index.ts",
+              "src/commands/auth.ts"
+            ]
+          }
+        }
+      },
+      "s5": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-15T14:30:00+08:00",
+        "output": {
+          "conclusion": "pass",
+          "score": "4/5",
+          "fixes_applied": [
+            "exec → execFile 修正 command injection 風險",
+            "移除 oauth.mock.ts 中未使用的 access_token 預生成"
+          ],
+          "issues": { "p0": 0, "p1_blocking": 0, "p1_recommended": 1, "p2": 1, "dismissed": 0 },
+          "spec_verification": {
+            "s0_pass_rate": "15/16",
+            "s1_scope_match": true,
+            "dod_pass_rate": "11/11"
+          }
+        }
+      },
+      "s6": {
+        "status": "completed",
+        "agents": ["orchestrator"],
+        "completed_at": "2026-03-15T15:00:00+08:00",
+        "output": {
+          "automated_tests": { "total": 114, "passed": 114, "failed": 0, "test_files": 18 },
+          "defects": { "total": 0, "fixed": 0 },
+          "repair_loop_count": 0,
+          "recommendation": "proceed_to_s7",
+          "ac_coverage": "15/16 (AC-5 spinner 簡化為 stderr)"
+        }
+      }
+    }
+  }
+}

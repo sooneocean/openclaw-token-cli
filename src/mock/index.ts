@@ -10,6 +10,7 @@
 import { registerAuthHandlers } from './handlers/auth.mock.js';
 import { registerCreditsHandlers } from './handlers/credits.mock.js';
 import { registerKeysHandlers } from './handlers/keys.mock.js';
+import { registerOAuthHandlers } from './handlers/oauth.mock.js';
 import {
   clearHandlers,
   defaultRouter,
@@ -24,6 +25,7 @@ import {
 registerAuthHandlers(defaultRouter);
 registerCreditsHandlers(defaultRouter);
 registerKeysHandlers(defaultRouter);
+registerOAuthHandlers(defaultRouter);
 
 export { handleMockRequest, clearHandlers, MockRouter, registerHandler, defaultRouter };
 export type { MockRequest, MockResponse };

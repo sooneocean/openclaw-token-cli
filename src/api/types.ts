@@ -145,6 +145,37 @@ export interface KeyUpdateRequest {
   disabled?: boolean;
 }
 
+// OAuth Device Flow
+export interface OAuthDeviceCodeRequest {
+  client_id: string;
+}
+
+export interface OAuthDeviceCodeResponse {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  interval: number;
+  expires_in: number;
+}
+
+export interface OAuthDeviceTokenRequest {
+  device_code: string;
+  grant_type: string;
+}
+
+export interface OAuthDeviceTokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface OAuthUserInfoResponse {
+  management_key: string;
+  email: string;
+  name: string;
+  avatar_url: string;
+  merged: boolean;
+}
+
 // Legacy aliases for backward compatibility with existing handlers
 /** @deprecated Use CreateKeyRequest */
 export type KeyCreateRequest = CreateKeyRequest;

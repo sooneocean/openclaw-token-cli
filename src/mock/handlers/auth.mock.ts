@@ -46,7 +46,7 @@ export function registerAuthHandlers(router: MockRouter): void {
       return { status: 400, data: { error: { code: 'INVALID_INPUT', message: 'Email and password are required' } } };
     }
     const user = store.users.get(body.email);
-    if (!user || user.password !== body.password) {
+    if (!user || !user.password || user.password !== body.password) {
       return { status: 401, data: { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } } };
     }
     return { status: 200, data: { data: { management_key: user.management_key, email: user.email, last_login: new Date().toISOString() } } };

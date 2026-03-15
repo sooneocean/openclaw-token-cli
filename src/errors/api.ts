@@ -37,7 +37,7 @@ export function mapApiError(status: number, errorCode?: string, message?: string
       return new CLIError(KEY_ALREADY_REVOKED, 1);
 
     default:
-      return new CLIError(message ?? 'Unknown error', 1);
+      return new CLIError(message ?? 'Unknown error', 1, undefined, errorCode);
   }
 }
 

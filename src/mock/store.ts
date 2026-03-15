@@ -2,10 +2,11 @@ import crypto from 'node:crypto';
 
 export interface MockUser {
   email: string;
-  password: string;
+  password?: string;
   management_key: string;
   plan: string;
   created_at: string;
+  oauth_provider?: string;
 }
 
 export interface MockCredits {
@@ -41,12 +42,25 @@ export interface MockAutoTopupConfig {
   amount: number;
 }
 
+export interface MockOAuthSession {
+  device_code: string;
+  user_code: string;
+  client_id: string;
+  access_token: string | null;
+  authorized: boolean;
+  auto_authorize_at: number;
+  expires_at: number;
+  email: string;
+  created_at: string;
+}
+
 export interface MockStoreState {
   users?: Map<string, MockUser>;
   credits?: Map<string, MockCredits>;
   transactions?: Map<string, MockTransaction[]>;
   keys?: Map<string, MockProvisionedKey[]>;
   autoTopup?: Map<string, MockAutoTopupConfig>;
+  oauthSessions?: Map<string, MockOAuthSession>;
 }
 
 const DEMO_EMAIL = 'demo@openclaw.dev';
@@ -61,6 +75,7 @@ export class MockStore {
   keys = new Map<string, MockProvisionedKey[]>();
   autoTopup = new Map<string, MockAutoTopupConfig>();
   idempotencyKeys = new Map<string, unknown>();
+  oauthSessions = new Map<string, MockOAuthSession>();
 
   constructor(initialState?: Partial<MockStoreState>) {
     if (initialState) {
@@ -69,6 +84,7 @@ export class MockStore {
       if (initialState.transactions) this.transactions = initialState.transactions;
       if (initialState.keys) this.keys = initialState.keys;
       if (initialState.autoTopup) this.autoTopup = initialState.autoTopup;
+      if (initialState.oauthSessions) this.oauthSessions = initialState.oauthSessions;
     } else {
       this.initDefaults();
     }
@@ -95,6 +111,7 @@ export class MockStore {
     this.keys.clear();
     this.idempotencyKeys.clear();
     this.autoTopup.clear();
+    this.oauthSessions.clear();
     this.initDefaults();
   }
 
@@ -121,6 +138,20 @@ export class MockStore {
 
   generateTransactionId(): string {
     return `txn_${crypto.randomBytes(6).toString('hex')}`;
+  }
+
+  generateDeviceCode(): string {
+    return `dc_${crypto.randomBytes(8).toString('hex')}`;
+  }
+
+  generateUserCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const part = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return `${part()}-${part()}`;
+  }
+
+  generateAccessToken(): string {
+    return `gho_${crypto.randomBytes(10).toString('hex')}`;
   }
 }
 
