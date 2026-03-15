@@ -9,7 +9,7 @@ _openclaw_token() {
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
 
-  commands="auth credits keys integrate profile audit completion"
+  commands="auth credits keys integrate profile audit config completion"
 
   case "\${COMP_WORDS[1]}" in
     auth)
@@ -19,7 +19,10 @@ _openclaw_token() {
       subcommands="balance buy history auto-topup"
       ;;
     keys)
-      subcommands="create list info update revoke revoke-all rotate"
+      subcommands="create list info update revoke revoke-all rotate export import usage"
+      ;;
+    config)
+      subcommands="get set list"
       ;;
     integrate)
       subcommands=""
@@ -78,6 +81,7 @@ _openclaw-token() {
     'integrate:Integrate with OpenClaw'
     'profile:Manage CLI profiles'
     'audit:View audit log'
+    'config:Manage CLI configuration'
     'completion:Generate shell completion'
   )
 
@@ -116,6 +120,17 @@ _openclaw-token() {
         'revoke:Revoke a key'
         'revoke-all:Revoke all active keys'
         'rotate:Rotate a key'
+        'export:Export keys to file'
+        'import:Import keys from file'
+        'usage:Monitor key usage'
+      )
+      _describe 'subcommand' subcommands
+      ;;
+    config)
+      subcommands=(
+        'get:Get a config value'
+        'set:Set a config value'
+        'list:List all config values'
       )
       _describe 'subcommand' subcommands
       ;;
