@@ -17,7 +17,7 @@ import { mockStore } from '../../src/mock/store.js';
 // 確保 mock handlers 已載入
 import '../../src/mock/index.js';
 
-const DEMO_TOKEN = 'sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+const DEMO_TOKEN = 'sk-mgmt-de000000-0000-0000-0000-000000000000';
 
 function captureStdout(): { lines: string[]; restore: () => void } {
   const lines: string[] = [];

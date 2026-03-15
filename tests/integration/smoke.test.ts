@@ -58,8 +58,7 @@ describe('CLI smoke tests', () => {
   }, 30_000);
 
   it('--mock auth whoami --json returns valid JSON when OPENCLAW_TOKEN_KEY is set', async () => {
-    // Any valid-format sk-mgmt- UUID token works in MockStore (maps to demo@openclaw.dev)
-    const DEMO_TOKEN = 'sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const DEMO_TOKEN = 'sk-mgmt-de000000-0000-0000-0000-000000000000';
 
     const { stdout, exitCode } = await cli('--mock auth whoami --json', {
       OPENCLAW_TOKEN_KEY: DEMO_TOKEN,

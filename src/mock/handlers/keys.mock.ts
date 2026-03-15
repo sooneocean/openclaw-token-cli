@@ -1,19 +1,6 @@
 import type { MockRouter, MockRequest, MockResponse } from '../handler.js';
 import type { MockStore, MockProvisionedKey } from '../store.js';
-
-function extractToken(req: MockRequest): string | null {
-  const auth = req.headers?.['Authorization'] || req.headers?.['authorization'];
-  if (!auth?.startsWith('Bearer ')) return null;
-  return auth.slice(7);
-}
-
-function requireValidToken(req: MockRequest, store: MockStore): MockResponse | string {
-  const token = extractToken(req);
-  if (!token || !store.isValidToken(token)) {
-    return { status: 401, data: { error: { code: 'UNAUTHORIZED', message: 'Invalid or missing token' } } };
-  }
-  return store.getEmailForToken(token);
-}
+import { requireValidToken } from '../utils.js';
 
 function getKeysForEmail(store: MockStore, email: string): MockProvisionedKey[] {
   return store.keys.get(email) ?? [];

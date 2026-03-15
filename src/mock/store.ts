@@ -63,8 +63,8 @@ export interface MockStoreState {
   oauthSessions?: Map<string, MockOAuthSession>;
 }
 
-const DEMO_EMAIL = 'demo@openclaw.dev';
-const DEMO_MANAGEMENT_KEY = 'sk-mgmt-de000000-0000-0000-0000-000000000000';
+export const DEMO_EMAIL = 'demo@openclaw.dev';
+export const DEMO_MANAGEMENT_KEY = 'sk-mgmt-de000000-0000-0000-0000-000000000000';
 const DEMO_PASSWORD = 'Demo1234!';
 
 export class MockStore {
@@ -77,6 +77,7 @@ export class MockStore {
   idempotencyKeys = new Map<string, unknown>();
   oauthSessions = new Map<string, MockOAuthSession>();
   revokedManagementKeys = new Set<string>();
+  private tokenEmailMap = new Map<string, string>();
 
   constructor(initialState?: Partial<MockStoreState>) {
     if (initialState) {
@@ -103,6 +104,7 @@ export class MockStore {
     this.transactions.set(DEMO_EMAIL, []);
     this.keys.set(DEMO_EMAIL, []);
     this.autoTopup.set(DEMO_EMAIL, { enabled: false, threshold: 5, amount: 25 });
+    this.tokenEmailMap.set(DEMO_MANAGEMENT_KEY, DEMO_EMAIL);
   }
 
   reset(): void {
@@ -114,6 +116,7 @@ export class MockStore {
     this.autoTopup.clear();
     this.oauthSessions.clear();
     this.revokedManagementKeys.clear();
+    this.tokenEmailMap.clear();
     this.initDefaults();
   }
 
@@ -122,9 +125,16 @@ export class MockStore {
     return /^sk-mgmt-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
   }
 
-  getEmailForToken(_token: string): string {
-    // Stateless demo account strategy: any valid-format token maps to demo account
-    return DEMO_EMAIL;
+  getEmailForToken(token: string): string | null {
+    return this.tokenEmailMap.get(token) ?? null;
+  }
+
+  setTokenEmailMapping(token: string, email: string): void {
+    this.tokenEmailMap.set(token, email);
+  }
+
+  removeTokenEmailMapping(token: string): void {
+    this.tokenEmailMap.delete(token);
   }
 
   generateManagementKey(): string {

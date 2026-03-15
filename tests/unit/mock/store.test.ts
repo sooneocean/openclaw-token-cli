@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MockStore } from '../../../src/mock/store.js';
+import { MockStore, DEMO_MANAGEMENT_KEY, DEMO_EMAIL } from '../../../src/mock/store.js';
 
 describe('MockStore', () => {
   let store: MockStore;
@@ -26,8 +26,33 @@ describe('MockStore', () => {
     expect(store.isValidToken('')).toBe(false);
   });
 
-  it('maps any valid token to demo email', () => {
-    expect(store.getEmailForToken('sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890')).toBe('demo@openclaw.dev');
+  it('maps DEMO_MANAGEMENT_KEY to demo email', () => {
+    expect(store.getEmailForToken(DEMO_MANAGEMENT_KEY)).toBe(DEMO_EMAIL);
+  });
+
+  it('returns null for unmapped token', () => {
+    expect(store.getEmailForToken('sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890')).toBeNull();
+  });
+
+  it('setTokenEmailMapping creates mapping', () => {
+    const token = 'sk-mgmt-11111111-1111-1111-1111-111111111111';
+    store.setTokenEmailMapping(token, 'test@example.com');
+    expect(store.getEmailForToken(token)).toBe('test@example.com');
+  });
+
+  it('removeTokenEmailMapping removes mapping', () => {
+    const token = 'sk-mgmt-22222222-2222-2222-2222-222222222222';
+    store.setTokenEmailMapping(token, 'test@example.com');
+    store.removeTokenEmailMapping(token);
+    expect(store.getEmailForToken(token)).toBeNull();
+  });
+
+  it('reset rebuilds demo mapping only', () => {
+    const token = 'sk-mgmt-33333333-3333-3333-3333-333333333333';
+    store.setTokenEmailMapping(token, 'custom@example.com');
+    store.reset();
+    expect(store.getEmailForToken(token)).toBeNull();
+    expect(store.getEmailForToken(DEMO_MANAGEMENT_KEY)).toBe(DEMO_EMAIL);
   });
 
   it('reset clears and reinitializes', () => {

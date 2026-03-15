@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mockStore } from '../../../../src/mock/store.js';
 import { handleMockRequest } from '../../../../src/mock/index.js';
 
-const AUTH_HEADER = { Authorization: 'Bearer sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890' };
+const AUTH_HEADER = { Authorization: 'Bearer sk-mgmt-de000000-0000-0000-0000-000000000000' };
 
 describe('Keys Mock Handlers', () => {
   beforeEach(() => {

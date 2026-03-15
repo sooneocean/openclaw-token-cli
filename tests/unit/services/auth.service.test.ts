@@ -130,8 +130,7 @@ describe('AuthService (mock mode)', () => {
   describe('whoami', () => {
     it('returns account info for valid token', async () => {
       const service = new AuthService({ mock: true });
-      // Any UUID-formatted sk-mgmt- token maps to demo@openclaw.dev in MockStore
-      const token = 'sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const token = 'sk-mgmt-de000000-0000-0000-0000-000000000000';
 
       const result = await service.whoami(token);
 

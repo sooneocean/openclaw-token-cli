@@ -46,7 +46,7 @@ describe('Auth Mock Handlers', () => {
   it('GET /auth/me with valid token returns 200', async () => {
     const resp = await handleMockRequest({
       method: 'GET', path: '/auth/me',
-      headers: { Authorization: 'Bearer sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+      headers: { Authorization: 'Bearer sk-mgmt-de000000-0000-0000-0000-000000000000' },
     });
     expect(resp.status).toBe(200);
     expect((resp.data as any).data.email).toBe('demo@openclaw.dev');
@@ -58,7 +58,7 @@ describe('Auth Mock Handlers', () => {
   });
 
   describe('POST /auth/rotate', () => {
-    const validToken = 'sk-mgmt-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const validToken = 'sk-mgmt-de000000-0000-0000-0000-000000000000';
 
     it('rotate with valid token returns new key', async () => {
       const resp = await handleMockRequest({

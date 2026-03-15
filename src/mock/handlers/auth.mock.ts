@@ -1,19 +1,6 @@
 import type { MockRouter, MockRequest, MockResponse } from '../handler.js';
 import type { MockStore } from '../store.js';
-
-function extractToken(req: MockRequest): string | null {
-  const auth = req.headers?.['Authorization'] || req.headers?.['authorization'];
-  if (!auth?.startsWith('Bearer ')) return null;
-  return auth.slice(7);
-}
-
-function requireValidToken(req: MockRequest, store: MockStore): MockResponse | string {
-  const token = extractToken(req);
-  if (!token || !store.isValidToken(token)) {
-    return { status: 401, data: { error: { code: 'UNAUTHORIZED', message: 'Invalid or missing token' } } };
-  }
-  return store.getEmailForToken(token);
-}
+import { extractToken, requireValidToken } from '../utils.js';
 
 export function registerAuthHandlers(router: MockRouter): void {
   router.register('POST', '/auth/register', (req: MockRequest, store: MockStore): MockResponse => {
@@ -37,6 +24,8 @@ export function registerAuthHandlers(router: MockRouter): void {
     store.keys.set(body.email, []);
     store.autoTopup.set(body.email, { enabled: false, threshold: 5, amount: 25 });
 
+    store.setTokenEmailMapping(managementKey, body.email);
+
     return { status: 201, data: { data: { management_key: managementKey, email: body.email, created_at: now } } };
   });
 
@@ -49,6 +38,8 @@ export function registerAuthHandlers(router: MockRouter): void {
     if (!user || !user.password || user.password !== body.password) {
       return { status: 401, data: { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } } };
     }
+    store.setTokenEmailMapping(user.management_key, body.email);
+
     return { status: 200, data: { data: { management_key: user.management_key, email: user.email, last_login: new Date().toISOString() } } };
   });
 
@@ -67,10 +58,13 @@ export function registerAuthHandlers(router: MockRouter): void {
     const newKey = store.generateManagementKey();
 
     store.revokedManagementKeys.add(oldKey);
+    store.removeTokenEmailMapping(oldKey);
     if (requestToken && requestToken !== oldKey) {
       store.revokedManagementKeys.add(requestToken);
+      store.removeTokenEmailMapping(requestToken);
     }
     user.management_key = newKey;
+    store.setTokenEmailMapping(newKey, email);
 
     return {
       status: 200,

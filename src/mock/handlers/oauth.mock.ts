@@ -1,11 +1,6 @@
 import type { MockRouter, MockRequest, MockResponse } from '../handler.js';
 import type { MockStore } from '../store.js';
-
-function extractBearerToken(req: MockRequest): string | null {
-  const auth = req.headers?.['Authorization'] || req.headers?.['authorization'];
-  if (!auth?.startsWith('Bearer ')) return null;
-  return auth.slice(7);
-}
+import { extractToken } from '../utils.js';
 
 export function registerOAuthHandlers(router: MockRouter): void {
   router.register('POST', '/oauth/device/code', (req: MockRequest, store: MockStore): MockResponse => {
@@ -81,7 +76,7 @@ export function registerOAuthHandlers(router: MockRouter): void {
   });
 
   router.register('GET', '/oauth/userinfo', (req: MockRequest, store: MockStore): MockResponse => {
-    const token = extractBearerToken(req);
+    const token = extractToken(req);
 
     const session = token
       ? Array.from(store.oauthSessions.values()).find(
@@ -122,6 +117,8 @@ export function registerOAuthHandlers(router: MockRouter): void {
       store.autoTopup.set(email, { enabled: false, threshold: 5, amount: 25 });
       merged = false;
     }
+
+    store.setTokenEmailMapping(management_key, email);
 
     return {
       status: 200,
