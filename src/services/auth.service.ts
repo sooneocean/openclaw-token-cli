@@ -50,10 +50,9 @@ export class AuthService extends BaseService {
     const data = resp.data.data;
 
     const existingConfig = await ConfigManager.read();
-    const resolved = await ConfigManager.resolve();
     await ConfigManager.write({
       management_key: data.management_key,
-      api_base: existingConfig?.api_base || resolved.api_base || DEFAULT_API_BASE,
+      api_base: existingConfig?.api_base || DEFAULT_API_BASE,
       email: existingConfig?.email || data.email,
       created_at: existingConfig?.created_at || new Date().toISOString(),
       last_login: existingConfig?.last_login || new Date().toISOString(),

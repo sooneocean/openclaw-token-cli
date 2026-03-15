@@ -60,8 +60,8 @@ export class ConfigManager {
     const config = await ConfigManager.read();
 
     const envKey = process.env.OPENCLAW_TOKEN_KEY;
-    if (envKey && !envKey.startsWith('sk-mgmt-')) {
-      throw new Error('OPENCLAW_TOKEN_KEY must start with "sk-mgmt-". Check your environment variable.');
+    if (envKey && (!envKey.startsWith('sk-mgmt-') || envKey.length < 15)) {
+      throw new Error('OPENCLAW_TOKEN_KEY must start with "sk-mgmt-" and include a valid key value. Check your environment variable.');
     }
 
     const management_key = envKey || config?.management_key || null;
