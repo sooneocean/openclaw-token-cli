@@ -1,0 +1,116 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "contract-testing",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_4_contract-testing",
+    "work_type": "new_feature",
+    "status": "in_progress",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "status": "completed",
+    "completed_at": "2026-03-15T22:30:00+08:00",
+    "started_at": "2026-03-15T21:00:00+08:00",
+    "last_updated": "2026-03-15T22:30:00+08:00",
+    "last_updated_by": "orchestrator",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "completed_at": "2026-03-15T21:00:00+08:00",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_4_contract-testing/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "建立 contract test suite，同一組測試同時驗證 mock handler 和真實 server 的 response schema 與行為一致性",
+          "pain_points": [
+            "CLI 測試全跑 mock，server 測試獨立跑，兩套行為可能分歧",
+            "types.ts 只保證 schema，行為邏輯無交叉驗證",
+            "v0.3.0 proxy 層增加後分歧會快速擴大"
+          ],
+          "goal": "一套測試、兩個 target，驗證 response 結構和關鍵行為一致",
+          "success_criteria": [
+            "tests/contract/ 存在，至少 6 個場景",
+            "npm run test:contract:mock 全過",
+            "CONTRACT_TEST_BASE_URL=... npm run test:contract:real 全過",
+            "同一測試、同一斷言、兩個 target 結果一致",
+            "Response 驗證基於 types.ts",
+            "現有 166 個測試不受影響"
+          ],
+          "scope_in": [
+            "FA-F: 雙模式 test harness",
+            "FA-S: 6 個核心場景 contract tests",
+            "FA-CI: npm scripts + env 配置"
+          ],
+          "scope_out": [
+            "修改 server 端程式碼",
+            "修改現有 mock handler",
+            "修改現有 166 個測試",
+            "Server 自動啟動/關閉",
+            "Docker Compose",
+            "GitHub Actions CI"
+          ],
+          "constraints": [
+            "vitest 測試框架",
+            "Mock 模式不需外部依賴",
+            "Real 模式需 PostgreSQL + server",
+            "測試冪等，場景獨立",
+            "不驗證動態值（timestamp、UUID）"
+          ],
+          "functional_areas": [
+            { "id": "FA-F", "name": "Contract Test 框架", "description": "雙模式 test harness、共用 fixtures、response 驗證 helpers", "independence": "high" },
+            { "id": "FA-S", "name": "場景定義", "description": "6 個核心場景的 contract test cases", "independence": "medium" },
+            { "id": "FA-CI", "name": "CI 整合", "description": "npm scripts、環境變數文件", "independence": "low" }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "completed_at": "2026-03-15T21:35:00+08:00",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-15_4_contract-testing/s1_dev_spec.md",
+          "tasks": [
+            "T1: ContractClient harness (M)",
+            "T2: Response assertion helpers (M)",
+            "T3: Fixtures + setup (S)",
+            "T4: vitest.config.ts + npm scripts (S)",
+            "T5: Auth scenarios (M)",
+            "T6: Credits scenarios (M)",
+            "T7: Keys scenarios (M)",
+            "T8: Error scenarios (S)",
+            "T9: OAuth + Idempotency scenarios (M)",
+            "T10: Full validation (S)"
+          ],
+          "acceptance_criteria": [
+            "AC1: npm run test:contract:mock all pass (>= 14 cases)",
+            "AC2: npm test still 166 tests",
+            "AC3: real mode switchable via CONTRACT_TEST_BASE_URL",
+            "AC4: same assertions for both targets",
+            "AC5: known drifts handled gracefully",
+            "AC6: typecheck passes"
+          ],
+          "assumptions": [
+            "Node 18+ with native fetch support",
+            "Real server runs at localhost:3000 with PostgreSQL",
+            "MockRouter.handle() is stable public API",
+            "Response envelope { data: {} } / { error: {} } is consistent"
+          ],
+          "solution_summary": "Dual-mode contract test harness with ContractClient interface (MockClient via MockRouter.handle(), RealClient via native fetch), structural response validation helpers based on types.ts, and 14 scenarios covering all public API endpoints. Known schema drifts (updated_at, usage_weekly coefficient, OAuth error format) handled with relaxed assertions or skip.",
+          "tech_debt": [
+            "OAuth error format divergence (RFC 8628 vs internal format)",
+            "PATCH /keys/:hash updated_at field inconsistency between mock and real",
+            "usage_weekly coefficient mismatch (mock: 0.6, real: 0.45)"
+          ],
+          "regression_risks": [
+            "vitest.config.ts may alter default test include behavior — mitigated by AC2",
+            "contract test files accidentally picked up by npm test — mitigated by .contract.test.ts naming + exclude config"
+          ]
+        }
+      }
+    }
+  }
+}
