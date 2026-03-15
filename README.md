@@ -23,9 +23,34 @@
 
 ## 🚀 Quick Start
 
+### Install
+
 ```bash
 npm install -g openclaw-token
 ```
+
+### Try it now (no account needed)
+
+Mock mode lets you explore every feature offline — zero setup, zero network:
+
+```bash
+# Login with demo account (email: demo@openclaw.dev / password: Demo1234!)
+openclaw-token --mock auth login
+
+# Check your $100 demo balance
+openclaw-token --mock credits balance
+
+# Create a key with a $10 monthly limit
+openclaw-token --mock keys create --name my-agent --limit 10 --limit-reset monthly
+
+# See all your keys
+openclaw-token --mock keys list
+
+# Buy more credits
+openclaw-token --mock credits buy --amount 25 --yes
+```
+
+### Production setup (4 steps)
 
 ```bash
 # 1. Create an account
@@ -39,6 +64,18 @@ openclaw-token keys create --name my-app --limit 10 --limit-reset monthly
 
 # 4. Inject into OpenClaw as a fallback token provider
 openclaw-token integrate
+```
+
+### Use with OpenClaw Skills
+
+After `integrate`, your provisioned key is automatically available as a fallback. When your primary API key runs out of credits, OpenClaw switches to the provisioned key seamlessly:
+
+```bash
+# Verify integration is active
+openclaw-token integrate --status
+
+# Monitor key usage in real time
+openclaw-token keys usage <hash> --watch
 ```
 
 ---
