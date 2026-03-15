@@ -53,8 +53,8 @@ describe('New Commands Registration', () => {
     expect(profileOpt).toBeDefined();
   });
 
-  it('version is 0.6.0', () => {
+  it('version is 0.7.0', () => {
     const prog = createProgram();
-    expect(prog.version()).toBe('0.6.0');
+    expect(prog.version()).toBe('0.7.0');
   });
 });

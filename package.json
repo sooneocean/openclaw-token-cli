@@ -1,10 +1,19 @@
 {
   "name": "openclaw-token",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain",
   "type": "module",
   "bin": {
     "openclaw-token": "./dist/bin/openclaw-token.js"
+  },
+  "exports": {
+    ".": "./dist/src/index.js",
+    "./sdk": "./dist/src/sdk.js"
+  },
+  "typesVersions": {
+    "*": {
+      "sdk": ["./dist/src/sdk.d.ts"]
+    }
   },
   "scripts": {
     "build": "tsup",
