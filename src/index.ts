@@ -5,6 +5,12 @@ import { createAuthCommand } from './commands/auth.js';
 import { createCreditsCommand } from './commands/credits.js';
 import { createKeysCommand } from './commands/keys.js';
 import { createIntegrateCommand } from './commands/integrate.js';
+import { createProfileCommand } from './commands/profile.js';
+import { createAuditCommand } from './commands/audit.js';
+import { createCompletionCommand } from './commands/completion.js';
+import { setActiveProfile } from './config/paths.js';
+import { ConfigManager } from './config/manager.js';
+import { AuditLogger } from './audit/logger.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +19,7 @@ export interface GlobalOptions {
   mock: boolean;
   color: boolean;
   verbose: boolean;
+  profile?: string;
 }
 
 export interface CreateProgramOptions {
@@ -38,17 +45,21 @@ export function createProgram(opts: CreateProgramOptions = {}): Command {
     .description(
       'CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain',
     )
-    .version('0.1.0')
+    .version('0.4.0')
     .option('--json', 'Output in JSON format', opts.json ?? false)
     .option('--mock', 'Use mock backend (no real API calls)', opts.mock ?? false)
     .option('--no-color', 'Disable colored output')
-    .option('--verbose', 'Show debug information (API calls)', opts.verbose ?? false);
+    .option('--verbose', 'Show debug information (API calls)', opts.verbose ?? false)
+    .option('--profile <name>', 'Use a specific profile');
 
   // ── Command registration ────────────────────────────────────────────────
   prog.addCommand(createAuthCommand());
   prog.addCommand(createCreditsCommand());
   prog.addCommand(createKeysCommand());
   prog.addCommand(createIntegrateCommand());
+  prog.addCommand(createProfileCommand());
+  prog.addCommand(createAuditCommand());
+  prog.addCommand(createCompletionCommand());
 
   return prog;
 }
@@ -90,8 +101,36 @@ export function handleError(err: unknown, prog?: Command): never {
 
 const program = createProgram();
 
-export function run(argv: string[]): void {
-  program.parseAsync(argv).catch((err: unknown) => handleError(err, program));
+export async function run(argv: string[]): Promise<void> {
+  // Initialize profile system before parsing
+  await ConfigManager.initActiveProfile();
+
+  // Pre-parse to extract --profile flag early
+  const profileIdx = argv.indexOf('--profile');
+  if (profileIdx !== -1 && argv[profileIdx + 1]) {
+    setActiveProfile(argv[profileIdx + 1]);
+  }
+
+  // Extract command info for audit logging
+  const cmdArgs = argv.slice(2).filter((a) => !a.startsWith('--'));
+  const command = cmdArgs[0] || 'help';
+  const subArgs = cmdArgs.slice(1);
+
+  try {
+    await program.parseAsync(argv);
+
+    // Log successful operations (skip help/completion/audit to avoid noise)
+    if (!['completion', 'audit', 'help'].includes(command)) {
+      await AuditLogger.log({ command, args: subArgs, status: 'success' }).catch(() => {});
+    }
+  } catch (err: unknown) {
+    // Log failed operations
+    if (!['completion', 'audit', 'help'].includes(command)) {
+      const detail = err instanceof Error ? err.message : String(err);
+      await AuditLogger.log({ command, args: subArgs, status: 'error', detail }).catch(() => {});
+    }
+    handleError(err, program);
+  }
 }
 
 export { program };

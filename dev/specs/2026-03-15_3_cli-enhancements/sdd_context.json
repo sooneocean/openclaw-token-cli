@@ -1,0 +1,71 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "cli-enhancements",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_3_cli-enhancements",
+    "work_type": "new_feature",
+    "status": "in_progress",
+    "execution_mode": "autopilot",
+    "current_stage": "S6",
+    "started_at": "2026-03-15T15:15:00+08:00",
+    "last_updated": "2026-03-15T15:25:00+08:00",
+    "last_updated_by": "frontend-developer",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "completed_at": "2026-03-15T15:15:00+08:00",
+        "agent": "requirement-analyst",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_3_cli-enhancements/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "CLI 增強功能 v0.4.0：多 Profile 支援、批量 Key 操作、Shell Autocomplete、本地 Audit Log",
+          "pain_points": [
+            "一次只能登入一個帳號，無法切換",
+            "keys list 無排序篩選，大量 key 時不好用",
+            "無 shell 補全，命令輸入效率低",
+            "無操作紀錄，無法追溯歷史操作"
+          ],
+          "goal": "提升 CLI 日常使用體驗，支援多帳號、批量操作、自動補全和操作追溯",
+          "success_criteria": [
+            "profile create/switch/list/delete 完整可用",
+            "keys revoke-all 批量撤銷 + 確認",
+            "keys list --sort/--filter 正常運作",
+            "completion bash/zsh 輸出可用腳本",
+            "所有操作自動寫 audit log",
+            "既有 134 測試全過",
+            "新功能有測試覆蓋"
+          ],
+          "scope_in": [
+            "Profile 管理命令 (create/switch/list/delete)",
+            "全域 --profile flag",
+            "keys revoke-all 命令",
+            "keys list --sort/--filter",
+            "completion bash/zsh 命令",
+            "Audit log 記錄 + 查看/清除命令"
+          ],
+          "scope_out": [
+            "Server 端修改",
+            "Profile 匯出/匯入",
+            "遠端 audit log 同步",
+            "Windows PowerShell autocomplete"
+          ],
+          "constraints": [
+            "不修改 server 端",
+            "向後相容既有 config 結構",
+            "Profile name 限英數+hyphen"
+          ],
+          "functional_areas": [
+            { "id": "FA-Profile", "name": "多 Profile 支援", "description": "profile create/switch/list/delete + --profile flag", "independence": "high" },
+            { "id": "FA-BatchKeys", "name": "批量 Key 操作", "description": "revoke-all + list --sort/--filter", "independence": "high" },
+            { "id": "FA-Complete", "name": "Shell Autocomplete", "description": "completion bash/zsh 腳本生成", "independence": "high" },
+            { "id": "FA-AuditLog", "name": "本地 Audit Log", "description": "操作日誌記錄 + audit show/clear", "independence": "high" }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      }
+    }
+  }
+}
