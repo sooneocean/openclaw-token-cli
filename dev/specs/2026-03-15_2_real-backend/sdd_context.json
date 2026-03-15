@@ -1,0 +1,464 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "real-backend",
+    "spec_mode": "full_spec",
+    "spec_folder": "dev/specs/2026-03-15_2_real-backend",
+    "work_type": "new_feature",
+    "status": "in_progress",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-15T14:30:00+08:00",
+    "last_updated": "2026-03-15T16:00:00+08:00",
+    "last_updated_by": "architect",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "completed_at": "2026-03-15T14:45:00+08:00",
+        "agent": "requirement-analyst",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_2_real-backend/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "建立 Hono + Bun + PostgreSQL 後端伺服器（獨立 repo），實作所有 17 個 API 端點含 GitHub OAuth",
+          "pain_points": [
+            "CLI real mode 打向不存在的 server",
+            "Mock 行為與真實有落差",
+            "無法驗證端到端流程",
+            "跨 CLI 執行不共享狀態"
+          ],
+          "goal": "建立可本地運行的真實後端伺服器，讓 CLI 不帶 --mock 即可完整操作",
+          "success_criteria": [
+            "Server 啟動並連接 PostgreSQL",
+            "全部 18 個 HTTP 操作實作完成",
+            "Response 格式與 types.ts 100% 一致",
+            "GitHub OAuth Device Flow 完整可用",
+            "CLI 不帶 --mock 可端到端操作",
+            "整合測試覆蓋所有端點",
+            "token-cli 既有 134 測試全過"
+          ],
+          "scope_in": [
+            "Hono + Bun 專案骨架（獨立 repo）",
+            "PostgreSQL schema + migration",
+            "Auth/Keys/Credits/OAuth 全部 18 HTTP 操作",
+            "Auth middleware + error handling",
+            "GitHub OAuth App 整合",
+            "整合測試"
+          ],
+          "scope_out": [
+            "雲端部署",
+            "Rate limiting",
+            "多用戶權限",
+            "Docker compose",
+            "帳單/支付整合",
+            "CLI 端程式碼修改"
+          ],
+          "constraints": [
+            "獨立 repo",
+            "API 合約 100% 符合 types.ts",
+            "Bun runtime",
+            "PostgreSQL 前置",
+            "GitHub OAuth App 前置"
+          ],
+          "functional_areas": [
+            { "id": "FA-Infra", "name": "伺服器基礎設施", "description": "Hono app, PostgreSQL schema + migration, auth middleware, error handling", "independence": "high" },
+            { "id": "FA-Auth", "name": "帳號認證 API", "description": "register, login, me, rotate 4 endpoints", "independence": "high" },
+            { "id": "FA-Keys", "name": "Key 管理 API", "description": "CRUD + rotate 6 endpoints", "independence": "high" },
+            { "id": "FA-Credits", "name": "額度管理 API", "description": "balance, purchase, history, auto-topup 5 endpoints (GET+PUT auto-topup)", "independence": "high" },
+            { "id": "FA-OAuth", "name": "GitHub OAuth Device Flow", "description": "device/code, device/token, userinfo + GitHub 整合", "independence": "medium" }
+          ],
+          "decomposition_strategy": "single_sop_fa_labeled",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "started_at": "2026-03-15T15:00:00+08:00",
+        "completed_at": "2026-03-15T15:45:00+08:00",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-15_2_real-backend/s1_dev_spec.md",
+          "api_spec_path": "dev/specs/2026-03-15_2_real-backend/s1_api_spec.md",
+          "impact_scope": {
+            "new_repo": "openclaw-token-server (獨立 repo，全新建立)",
+            "cli_repo_changes": "無程式碼修改，僅環境變數配置",
+            "layers": ["FA-Infra", "FA-Auth", "FA-Keys", "FA-Credits", "FA-OAuth"],
+            "api_contract_source": "src/api/types.ts + src/api/endpoints.ts",
+            "mock_source": "src/mock/handlers/*.ts + src/mock/store.ts"
+          },
+          "tasks": [
+            {"id": 1, "name": "專案骨架 + 設定", "fa": "FA-Infra", "type": "backend", "complexity": "M", "agent": "bun-expert", "depends_on": [], "wave": 1},
+            {"id": 2, "name": "PostgreSQL Schema + Migration", "fa": "FA-Infra", "type": "database", "complexity": "M", "agent": "db-expert", "depends_on": [], "wave": 1},
+            {"id": 3, "name": "Auth Middleware + Error Handler", "fa": "FA-Infra", "type": "backend", "complexity": "M", "agent": "bun-expert", "depends_on": [1, 2], "wave": 2},
+            {"id": 4, "name": "Token/Password Utilities", "fa": "FA-Infra", "type": "backend", "complexity": "S", "agent": "bun-expert", "depends_on": [1], "wave": 2},
+            {"id": 5, "name": "Auth Routes", "fa": "FA-Auth", "type": "backend", "complexity": "L", "agent": "bun-expert", "depends_on": [3, 4], "wave": 3},
+            {"id": 6, "name": "Keys Routes", "fa": "FA-Keys", "type": "backend", "complexity": "L", "agent": "bun-expert", "depends_on": [3, 4], "wave": 3},
+            {"id": 7, "name": "Credits Routes", "fa": "FA-Credits", "type": "backend", "complexity": "L", "agent": "bun-expert", "depends_on": [3], "wave": 3},
+            {"id": 8, "name": "OAuth Routes", "fa": "FA-OAuth", "type": "backend", "complexity": "L", "agent": "bun-expert", "depends_on": [3, 5], "wave": 4},
+            {"id": 9, "name": "整合測試 (Auth + Keys)", "fa": "全域", "type": "test", "complexity": "L", "agent": "test-engineer", "depends_on": [5, 6], "wave": 5},
+            {"id": 10, "name": "整合測試 (Credits + OAuth)", "fa": "全域", "type": "test", "complexity": "L", "agent": "test-engineer", "depends_on": [7, 8], "wave": 5}
+          ],
+          "acceptance_criteria": 23,
+          "solution_summary": "獨立 Hono+Bun+PostgreSQL 後端，6 張表，18 HTTP 操作，5 波次 10 任務實作",
+          "tech_debt": [
+            "usage stats 使用靜態乘數 placeholder",
+            "auto-topup 僅存設定無觸發機制",
+            "idempotency key 無 TTL 清理"
+          ],
+          "regression_risks": [
+            "token-cli 134 測試不受影響（全用 mock mode）",
+            "types.ts 不需修改"
+          ],
+          "assumptions": [
+            "開發者已安裝 PostgreSQL 和 Bun",
+            "已建立 GitHub OAuth App",
+            "CLI baseURL 可透過環境變數覆蓋"
+          ],
+          "risks": [
+            {
+              "risk": "OAuth Device Flow 依賴外部 GitHub API",
+              "level": "high",
+              "mitigation": "502 fallback + 整合測試用 mock server"
+            },
+            {
+              "risk": "PostgreSQL concurrent write",
+              "level": "medium",
+              "mitigation": "UNIQUE constraints + DB transactions + SELECT FOR UPDATE"
+            },
+            {
+              "risk": "Usage stats 是假資料",
+              "level": "low",
+              "mitigation": "標記 placeholder，API 合約不變"
+            },
+            {
+              "risk": "Login 行為與 mock 不一致（新 key + revoke 舊 key）",
+              "level": "low",
+              "mitigation": "CLI 只存最新 key，不受影響"
+            }
+          ],
+          "decisions": [
+            {"id": "D1", "topic": "Login 行為", "decision": "產新 key + revoke 舊 key（更安全，符合 S0 spec）"},
+            {"id": "D2", "topic": "Usage stats", "decision": "靜態乘數 placeholder（同 mock）"},
+            {"id": "D3", "topic": "Auto-topup 觸發", "decision": "僅存設定，不實作觸發"},
+            {"id": "D4", "topic": "OAuth client_id", "decision": "驗證是否匹配 GITHUB_CLIENT_ID 環境變數"},
+            {"id": "D5", "topic": "Idempotency", "decision": "credit_transactions.idempotency_key UNIQUE column"},
+            {"id": "D6", "topic": "Key hash", "decision": "SHA-256(initial_key_value) 前 16 hex，rotate 後不變"},
+            {"id": "D7", "topic": "Key rotate hash 行為", "decision": "hash 不變（穩定識別碼）"}
+          ],
+          "unknowns": [],
+          "dependencies": {
+            "upstream": ["token-cli/src/api/types.ts", "token-cli/src/api/endpoints.ts"],
+            "external": ["GitHub OAuth API", "PostgreSQL (porsager/postgres)"],
+            "cli_config": "OPENCLAW_TOKEN_API_BASE 環境變數"
+          }
+        }
+      },
+      "s3": {
+        "status": "completed",
+        "agent": "architect",
+        "completed_at": "2026-03-15T16:00:00+08:00",
+        "output": {
+          "implementation_plan_path": "dev/specs/2026-03-15_2_real-backend/s3_implementation_plan.md",
+          "total_tasks": 10,
+          "estimated_waves": 5,
+          "waves": [
+            {
+              "wave": 1,
+              "name": "基礎建設",
+              "tasks": [
+                {
+                  "id": 1,
+                  "name": "專案骨架 + 設定",
+                  "agent": "bun-expert",
+                  "dependencies": [],
+                  "complexity": "M",
+                  "parallel": true,
+                  "affected_files": ["package.json", "tsconfig.json", ".env.example", "src/index.ts", "src/config.ts", "src/errors.ts"],
+                  "tdd_plan": null,
+                  "skip_justification": "專案骨架和設定檔無可測邏輯"
+                },
+                {
+                  "id": 2,
+                  "name": "PostgreSQL Schema + Migration",
+                  "agent": "db-expert",
+                  "dependencies": [],
+                  "complexity": "M",
+                  "parallel": true,
+                  "affected_files": ["src/db/client.ts", "src/db/migrate.ts", "src/db/migrations/001_initial.sql"],
+                  "tdd_plan": null,
+                  "skip_justification": "Migration 需真實 DB，正確性在後續整合測試驗證"
+                }
+              ],
+              "parallel": true
+            },
+            {
+              "wave": 2,
+              "name": "核心模組",
+              "tasks": [
+                {
+                  "id": 3,
+                  "name": "Auth Middleware + Error Handler",
+                  "agent": "bun-expert",
+                  "dependencies": [1, 2],
+                  "complexity": "M",
+                  "parallel": true,
+                  "affected_files": ["src/middleware/auth.ts", "src/middleware/error.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/middleware.test.ts",
+                    "test_cases": [
+                      "auth middleware returns 401 when no token provided",
+                      "auth middleware returns 401 when token is revoked",
+                      "auth middleware sets userId on valid token",
+                      "error handler returns AppError as JSON",
+                      "error handler maps PG 23505 to 409",
+                      "error handler returns 500 for unknown errors without stack trace"
+                    ],
+                    "test_command": "bun test tests/unit/middleware.test.ts"
+                  }
+                },
+                {
+                  "id": 4,
+                  "name": "Token/Password Utilities",
+                  "agent": "bun-expert",
+                  "dependencies": [1],
+                  "complexity": "S",
+                  "parallel": true,
+                  "affected_files": ["src/utils/token.ts", "src/utils/password.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/utils.test.ts",
+                    "test_cases": [
+                      "generateManagementKey returns sk-mgmt- format",
+                      "generateProvisionedKey returns sk-prov- format with 32 hex",
+                      "computeKeyHash returns 16 hex chars",
+                      "computeKeyHash is deterministic for same input",
+                      "hashPassword returns bcrypt hash",
+                      "verifyPassword returns true for correct password",
+                      "verifyPassword returns false for wrong password"
+                    ],
+                    "test_command": "bun test tests/unit/utils.test.ts"
+                  }
+                }
+              ],
+              "parallel": true
+            },
+            {
+              "wave": 3,
+              "name": "業務路由",
+              "tasks": [
+                {
+                  "id": 5,
+                  "name": "Auth Routes",
+                  "agent": "bun-expert",
+                  "dependencies": [3, 4],
+                  "complexity": "L",
+                  "parallel": true,
+                  "affected_files": ["src/routes/auth.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/routes/auth.test.ts",
+                    "test_cases": [
+                      "POST /auth/register creates user and returns 201",
+                      "POST /auth/register returns 409 for duplicate email",
+                      "POST /auth/register returns 400 for missing fields",
+                      "POST /auth/login returns 200 with new key",
+                      "POST /auth/login returns 401 for wrong password",
+                      "POST /auth/login revokes old management key",
+                      "GET /auth/me returns user profile",
+                      "GET /auth/me returns 401 without token",
+                      "POST /auth/rotate returns new key and revokes old",
+                      "POST /auth/rotate old key becomes invalid"
+                    ],
+                    "test_command": "bun test tests/unit/routes/auth.test.ts"
+                  }
+                },
+                {
+                  "id": 6,
+                  "name": "Keys Routes",
+                  "agent": "bun-expert",
+                  "dependencies": [3, 4],
+                  "complexity": "L",
+                  "parallel": true,
+                  "affected_files": ["src/routes/keys.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/routes/keys.test.ts",
+                    "test_cases": [
+                      "POST /keys creates key with correct format",
+                      "POST /keys returns 409 for duplicate name",
+                      "GET /keys returns list without key values",
+                      "GET /keys/:hash returns detail with usage stats",
+                      "GET /keys/:hash returns 404 for revoked key",
+                      "PATCH /keys/:hash updates settings",
+                      "DELETE /keys/:hash revokes key",
+                      "DELETE /keys/:hash returns 410 if already revoked",
+                      "POST /keys/:hash/rotate generates new key value",
+                      "POST /keys/:hash/rotate keeps hash unchanged"
+                    ],
+                    "test_command": "bun test tests/unit/routes/keys.test.ts"
+                  }
+                },
+                {
+                  "id": 7,
+                  "name": "Credits Routes",
+                  "agent": "bun-expert",
+                  "dependencies": [3],
+                  "complexity": "L",
+                  "parallel": true,
+                  "affected_files": ["src/routes/credits.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/routes/credits.test.ts",
+                    "test_cases": [
+                      "GET /credits returns balance info",
+                      "POST /credits/purchase succeeds with valid amount",
+                      "POST /credits/purchase returns 400 for amount < 5",
+                      "POST /credits/purchase calculates platform_fee correctly",
+                      "POST /credits/purchase idempotency returns same result",
+                      "GET /credits/history returns paginated results",
+                      "GET /credits/auto-topup returns config",
+                      "PUT /credits/auto-topup updates settings",
+                      "PUT /credits/auto-topup returns 400 for invalid threshold"
+                    ],
+                    "test_command": "bun test tests/unit/routes/credits.test.ts"
+                  }
+                }
+              ],
+              "parallel": true
+            },
+            {
+              "wave": 4,
+              "name": "OAuth 整合",
+              "tasks": [
+                {
+                  "id": 8,
+                  "name": "OAuth Routes",
+                  "agent": "bun-expert",
+                  "dependencies": [3, 5],
+                  "complexity": "L",
+                  "parallel": false,
+                  "affected_files": ["src/routes/oauth.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/routes/oauth.test.ts",
+                    "test_cases": [
+                      "POST /oauth/device/code calls GitHub and stores session",
+                      "POST /oauth/device/code returns 400 without client_id",
+                      "POST /oauth/device/token returns pending status",
+                      "POST /oauth/device/token returns access_token on success",
+                      "POST /oauth/device/token returns expired_token for expired session",
+                      "GET /oauth/userinfo returns user profile for new user",
+                      "GET /oauth/userinfo merges existing user",
+                      "OAuth routes return 502 when GitHub is unreachable"
+                    ],
+                    "test_command": "bun test tests/unit/routes/oauth.test.ts"
+                  }
+                }
+              ],
+              "parallel": false
+            },
+            {
+              "wave": 5,
+              "name": "整合測試",
+              "tasks": [
+                {
+                  "id": 9,
+                  "name": "整合測試 (Auth + Keys)",
+                  "agent": "test-engineer",
+                  "dependencies": [5, 6],
+                  "complexity": "L",
+                  "parallel": true,
+                  "affected_files": ["tests/setup.ts", "tests/integration/auth.test.ts", "tests/integration/keys.test.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/auth.test.ts, tests/integration/keys.test.ts",
+                    "test_cases": [
+                      "register creates user and returns management key",
+                      "register rejects duplicate email with 409",
+                      "login returns new key and revokes old",
+                      "login rejects wrong password with 401",
+                      "me returns profile with credits and keys count",
+                      "rotate returns new key and invalidates old",
+                      "create key returns key with hash",
+                      "create key rejects duplicate name with 409",
+                      "list keys excludes key values",
+                      "key detail returns usage stats",
+                      "revoke key returns success",
+                      "revoke already revoked returns 410",
+                      "rotate key generates new value keeps hash"
+                    ],
+                    "test_command": "bun test tests/integration/"
+                  }
+                },
+                {
+                  "id": 10,
+                  "name": "整合測試 (Credits + OAuth)",
+                  "agent": "test-engineer",
+                  "dependencies": [7, 8],
+                  "complexity": "L",
+                  "parallel": true,
+                  "affected_files": ["tests/integration/credits.test.ts", "tests/integration/oauth.test.ts"],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/credits.test.ts, tests/integration/oauth.test.ts",
+                    "test_cases": [
+                      "GET /credits returns zero balance for new user",
+                      "POST /credits/purchase adds credits",
+                      "POST /credits/purchase idempotency returns same result",
+                      "GET /credits/history returns transactions",
+                      "PUT /credits/auto-topup updates config",
+                      "POST /oauth/device/code proxies to GitHub",
+                      "POST /oauth/device/token returns pending then authorized",
+                      "GET /oauth/userinfo creates new user",
+                      "GET /oauth/userinfo merges existing user",
+                      "OAuth returns 502 when GitHub unreachable"
+                    ],
+                    "test_command": "bun test tests/integration/"
+                  }
+                }
+              ],
+              "parallel": true
+            }
+          ],
+          "verification": {
+            "unit_tests": ["bun test tests/unit/"],
+            "integration_tests": ["bun test tests/integration/"],
+            "all_tests": ["bun test"],
+            "e2e_manual": "OPENCLAW_TOKEN_API_BASE=http://localhost:3000 npx tsx src/index.ts auth register"
+          }
+        }
+      },
+      "s4": {
+        "status": "completed",
+        "agent": "orchestrator",
+        "started_at": "2026-03-15T16:30:00+08:00",
+        "completed_at": "2026-03-15T17:00:00+08:00",
+        "output": {
+          "completed_tasks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "progress": "10/10",
+          "build_status": "pass",
+          "test_results": {
+            "unit": "10 pass, 0 fail",
+            "integration": "34 pass, 0 fail",
+            "total": "44 pass, 0 fail"
+          },
+          "cli_regression": "134 pass, 0 fail (token-cli tests unaffected)",
+          "repo_path": "/Users/asd/demo/openclaw-token-server",
+          "commit": "feat: implement OpenClaw Token Server with Hono + Bun + PostgreSQL"
+        }
+      },
+      "s5": {
+        "status": "completed",
+        "agent": "orchestrator",
+        "completed_at": "2026-03-15T17:10:00+08:00",
+        "output": { "verdict": "pass", "issues": [] }
+      },
+      "s6": {
+        "status": "completed",
+        "agent": "orchestrator",
+        "completed_at": "2026-03-15T17:15:00+08:00",
+        "output": {
+          "automated_tests": { "server": "44 pass, 0 fail", "cli_regression": "134 pass, 0 fail" },
+          "e2e_tests": "10/10 pass (register, login, me, old-key-401, create-key, list-keys, purchase, balance, rotate, response-format)",
+          "defects": [],
+          "repair_loop_count": 0,
+          "recommendation": "pass"
+        }
+      }
+    }
+  }
+}
