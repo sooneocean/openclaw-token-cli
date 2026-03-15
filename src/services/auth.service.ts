@@ -3,19 +3,11 @@ import { ENDPOINTS } from '../api/endpoints.js';
 import type { ApiResponse, AuthRegisterResponse, AuthLoginResponse, AuthMeResponse, AuthRotateResponse } from '../api/types.js';
 import { ConfigManager } from '../config/manager.js';
 import { DEFAULT_API_BASE } from '../config/paths.js';
+import { BaseService } from './base.service.js';
 
-export interface AuthServiceOptions {
-  mock: boolean;
-  verbose?: boolean;
-}
+export { type ServiceOptions as AuthServiceOptions } from './base.service.js';
 
-export class AuthService {
-  private options: AuthServiceOptions;
-
-  constructor(options: AuthServiceOptions) {
-    this.options = options;
-  }
-
+export class AuthService extends BaseService {
   async register(email: string, password: string): Promise<AuthRegisterResponse> {
     const client = createApiClient({ mock: this.options.mock, verbose: this.options.verbose });
     const resp = await client.post<ApiResponse<AuthRegisterResponse>>(ENDPOINTS.AUTH_REGISTER, { email, password });
@@ -53,17 +45,12 @@ export class AuthService {
   }
 
   async rotate(token: string): Promise<AuthRotateResponse> {
-    const resolved = await ConfigManager.resolve();
-    const client = createApiClient({
-      mock: this.options.mock,
-      baseURL: resolved.api_base,
-      token,
-      verbose: this.options.verbose,
-    });
+    const client = await this.getClient(token);
     const resp = await client.post<ApiResponse<AuthRotateResponse>>(ENDPOINTS.AUTH_ROTATE, {});
     const data = resp.data.data;
 
     const existingConfig = await ConfigManager.read();
+    const resolved = await ConfigManager.resolve();
     await ConfigManager.write({
       management_key: data.management_key,
       api_base: existingConfig?.api_base || resolved.api_base || DEFAULT_API_BASE,
@@ -76,13 +63,7 @@ export class AuthService {
   }
 
   async whoami(token: string): Promise<AuthMeResponse> {
-    const resolved = await ConfigManager.resolve();
-    const client = createApiClient({
-      mock: this.options.mock,
-      baseURL: resolved.api_base,
-      token,
-      verbose: this.options.verbose,
-    });
+    const client = await this.getClient(token);
     const resp = await client.get<ApiResponse<AuthMeResponse>>(ENDPOINTS.AUTH_ME);
     return resp.data.data;
   }

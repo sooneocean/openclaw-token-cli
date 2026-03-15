@@ -1,30 +1,10 @@
-import { createApiClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
 import type { ApiResponse, ProvisionedKey, KeyDetailResponse, KeysListResponse, KeyRevokeResponse, KeyRotateResponse, CreateKeyRequest, KeyUpdateRequest } from '../api/types.js';
-import { ConfigManager } from '../config/manager.js';
+import { BaseService } from './base.service.js';
 
-export interface KeysServiceOptions {
-  mock: boolean;
-  verbose?: boolean;
-}
+export { type ServiceOptions as KeysServiceOptions } from './base.service.js';
 
-export class KeysService {
-  private options: KeysServiceOptions;
-
-  constructor(options: KeysServiceOptions) {
-    this.options = options;
-  }
-
-  private async getClient(token: string) {
-    const resolved = await ConfigManager.resolve();
-    return createApiClient({
-      mock: this.options.mock,
-      baseURL: resolved.api_base,
-      token,
-      verbose: this.options.verbose,
-    });
-  }
-
+export class KeysService extends BaseService {
   async create(token: string, params: CreateKeyRequest): Promise<ProvisionedKey> {
     const client = await this.getClient(token);
     const resp = await client.post<ApiResponse<ProvisionedKey>>(ENDPOINTS.KEYS, params);

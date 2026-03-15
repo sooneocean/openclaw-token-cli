@@ -11,18 +11,24 @@ describe('redactSecret', () => {
     expect(result).toContain('****');
   });
 
-  it('長度 = 16：全遮蔽為 ****', () => {
+  it('長度 5-16：保留前 4 字元 + ****', () => {
+    const secret = 'short-secret'; // 12 chars
+    expect(redactSecret(secret)).toBe('shor****');
+  });
+
+  it('長度 = 16：保留前 4 字元 + ****', () => {
     const secret = '1234567890123456'; // exactly 16 chars
-    expect(redactSecret(secret)).toBe('****');
+    expect(redactSecret(secret)).toBe('1234****');
   });
 
-  it('長度 < 16：全遮蔽為 ****', () => {
-    const secret = 'short-secret';
-    expect(redactSecret(secret)).toBe('****');
-  });
-
-  it('空字串：全遮蔽為 ****', () => {
+  it('長度 <= 4：全遮蔽為 ****', () => {
     expect(redactSecret('')).toBe('****');
+    expect(redactSecret('ab')).toBe('****');
+    expect(redactSecret('abcd')).toBe('****');
+  });
+
+  it('長度 = 5（短 key 邊界）：保留前 4 + ****', () => {
+    expect(redactSecret('12345')).toBe('1234****');
   });
 
   it('長度 = 17（剛過門檻）：保留前 12 + **** + 末 4', () => {

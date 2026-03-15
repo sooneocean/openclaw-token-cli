@@ -36,8 +36,8 @@ export function createCreditsCommand(): Command {
 
   credits
     .command('buy')
-    .description('Purchase credits')
-    .requiredOption('--amount <number>', 'Amount in USD', parseFloat)
+    .description('Purchase credits\n\nExamples:\n  $ openclaw-token credits buy --amount 10\n  $ openclaw-token credits buy --amount 50 --yes')
+    .requiredOption('--amount <number>', 'Amount in USD (minimum $5)', parseFloat)
     .option('--yes', 'Skip confirmation', false)
     .action(async (cmdOpts) => {
       const opts = getGlobalOptions();
@@ -45,7 +45,7 @@ export function createCreditsCommand(): Command {
       const amount = cmdOpts.amount as number;
 
       if (amount < 5) {
-        throw new Error('Minimum purchase amount is $5.00');
+        throw new Error('Minimum purchase amount is $5.00 (required to cover platform fee of 5.5% or $0.80 minimum).');
       }
 
       const platformFee = Math.round(Math.max(amount * 0.055, 0.80) * 100) / 100;

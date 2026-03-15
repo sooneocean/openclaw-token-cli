@@ -12,7 +12,7 @@ export function createKeysCommand(): Command {
 
   keys
     .command('create')
-    .description('Create a new provisioned API key')
+    .description('Create a new provisioned API key\n\nExamples:\n  $ openclaw-token keys create --name my-api\n  $ openclaw-token keys create --name prod --limit 50 --limit-reset monthly')
     .requiredOption('--name <name>', 'Key name')
     .option('--limit <number>', 'Credit limit in USD', parseFloat)
     .option('--limit-reset <frequency>', 'Limit reset: daily, weekly, monthly')
@@ -52,7 +52,7 @@ export function createKeysCommand(): Command {
 
   keys
     .command('list')
-    .description('List all provisioned keys')
+    .description('List all provisioned keys\n\nExamples:\n  $ openclaw-token keys list --sort -usage\n  $ openclaw-token keys list --filter active\n  $ openclaw-token keys list --filter "usage>10" --sort name')
     .option('--sort <field>', 'Sort by: name, usage, created_at (prefix with - for desc, e.g. -usage)')
     .option('--filter <expr>', 'Filter: disabled, active, usage>N (e.g. "usage>10")')
     .action(async (cmdOpts) => {

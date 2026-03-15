@@ -1,31 +1,11 @@
 import crypto from 'node:crypto';
-import { createApiClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
 import type { ApiResponse, CreditsResponse, CreditsPurchaseResponse, CreditsHistoryResponse, AutoTopupConfig, AutoTopupUpdateResponse } from '../api/types.js';
-import { ConfigManager } from '../config/manager.js';
+import { BaseService } from './base.service.js';
 
-export interface CreditsServiceOptions {
-  mock: boolean;
-  verbose?: boolean;
-}
+export { type ServiceOptions as CreditsServiceOptions } from './base.service.js';
 
-export class CreditsService {
-  private options: CreditsServiceOptions;
-
-  constructor(options: CreditsServiceOptions) {
-    this.options = options;
-  }
-
-  private async getClient(token: string) {
-    const resolved = await ConfigManager.resolve();
-    return createApiClient({
-      mock: this.options.mock,
-      baseURL: resolved.api_base,
-      token,
-      verbose: this.options.verbose,
-    });
-  }
-
+export class CreditsService extends BaseService {
   async balance(token: string): Promise<CreditsResponse> {
     const client = await this.getClient(token);
     const resp = await client.get<ApiResponse<CreditsResponse>>(ENDPOINTS.CREDITS);

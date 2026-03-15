@@ -59,10 +59,12 @@ export class ConfigManager {
   static async resolve(): Promise<ResolvedConfig> {
     const config = await ConfigManager.read();
 
-    const management_key =
-      process.env.OPENCLAW_TOKEN_KEY ||
-      config?.management_key ||
-      null;
+    const envKey = process.env.OPENCLAW_TOKEN_KEY;
+    if (envKey && !envKey.startsWith('sk-mgmt-')) {
+      throw new Error('OPENCLAW_TOKEN_KEY must start with "sk-mgmt-". Check your environment variable.');
+    }
+
+    const management_key = envKey || config?.management_key || null;
 
     const api_base =
       process.env.OPENCLAW_TOKEN_API_BASE ||
