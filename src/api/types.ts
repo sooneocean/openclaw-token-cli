@@ -52,7 +52,7 @@ export interface CreditsPurchaseRequest {
   amount: number;
 }
 
-export interface CreditsPurchaseResponse {
+export interface CreditsPurchaseImmediateResponse {
   transaction_id: string;
   amount: number;
   platform_fee: number;
@@ -60,6 +60,17 @@ export interface CreditsPurchaseResponse {
   new_balance: number;
   created_at: string;
 }
+
+export interface CreditsPurchaseStripeResponse {
+  checkout_url: string;
+  session_id: string;
+}
+
+export type CreditsPurchaseResponse = CreditsPurchaseImmediateResponse | CreditsPurchaseStripeResponse;
+
+export type CreditsBuyResult =
+  | { mode: 'immediate' } & CreditsPurchaseImmediateResponse
+  | { mode: 'stripe'; checkout_url: string; session_id: string };
 
 export interface CreditHistoryEntry {
   id: string;

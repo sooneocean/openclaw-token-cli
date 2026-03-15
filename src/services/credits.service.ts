@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { ApiResponse, CreditsResponse, CreditsPurchaseResponse, CreditsHistoryResponse, AutoTopupConfig, AutoTopupUpdateResponse } from '../api/types.js';
+import type { ApiResponse, CreditsResponse, CreditsPurchaseResponse, CreditsBuyResult, CreditsHistoryResponse, AutoTopupConfig, AutoTopupUpdateResponse } from '../api/types.js';
 import { BaseService } from './base.service.js';
 
 export { type ServiceOptions as CreditsServiceOptions } from './base.service.js';
@@ -12,7 +12,7 @@ export class CreditsService extends BaseService {
     return resp.data.data;
   }
 
-  async buy(token: string, amount: number): Promise<CreditsPurchaseResponse> {
+  async buy(token: string, amount: number): Promise<CreditsBuyResult> {
     const client = await this.getClient(token);
     const idempotencyKey = crypto.randomUUID();
     const resp = await client.post<ApiResponse<CreditsPurchaseResponse>>(
@@ -20,7 +20,15 @@ export class CreditsService extends BaseService {
       { amount },
       { headers: { 'Idempotency-Key': idempotencyKey } },
     );
-    return resp.data.data;
+    const data = resp.data.data;
+
+    // Stripe mode: response has checkout_url
+    if ('checkout_url' in data) {
+      return { mode: 'stripe', checkout_url: data.checkout_url, session_id: data.session_id };
+    }
+
+    // Mock / immediate mode
+    return { mode: 'immediate', ...data };
   }
 
   async history(token: string, options?: { limit?: number; offset?: number; type?: string }): Promise<CreditsHistoryResponse> {

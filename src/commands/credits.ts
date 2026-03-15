@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import { confirm } from '@inquirer/prompts';
+import { execFile } from 'node:child_process';
 import { CreditsService } from '../services/credits.service.js';
 import { requireAuth } from '../utils/auth-guard.js';
 import { getGlobalOptions } from '../index.js';
-import { output, success } from '../output/formatter.js';
+import { output, success, info, warn } from '../output/formatter.js';
 import { createTable } from '../output/table.js';
 import { withSpinner } from '../output/spinner.js';
 
@@ -72,10 +73,63 @@ export function createCreditsCommand(): Command {
       const service = new CreditsService({ mock: opts.mock, verbose: opts.verbose });
       const result = await withSpinner('Processing purchase...', () => service.buy(token, amount));
 
-      if (opts.json) {
-        output(result, { json: true });
+      if (result.mode === 'stripe') {
+        // Stripe checkout mode
+        if (opts.json) {
+          output({ checkout_url: result.checkout_url, session_id: result.session_id }, { json: true });
+          return;
+        }
+
+        info(`Payment URL: ${result.checkout_url}`);
+
+        // Try to open browser
+        const openCmd = process.platform === 'darwin' ? 'open'
+          : process.platform === 'win32' ? 'cmd'
+          : 'xdg-open';
+        const openArgs = process.platform === 'win32'
+          ? ['/c', 'start', result.checkout_url]
+          : [result.checkout_url];
+
+        execFile(openCmd, openArgs, (err) => {
+          if (err) {
+            warn('Could not open browser automatically. Please open the URL above manually.');
+          }
+        });
+
+        output('Waiting for payment to complete...');
+
+        // Poll GET /credits until balance changes (up to 5 minutes)
+        const initialBalance = await service.balance(token);
+        const initialRemaining = initialBalance.remaining;
+        const pollIntervalMs = 5000;
+        const maxWaitMs = 5 * 60 * 1000;
+        const startTime = Date.now();
+        let paid = false;
+
+        while (Date.now() - startTime < maxWaitMs) {
+          await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+          try {
+            const current = await service.balance(token);
+            if (current.remaining > initialRemaining) {
+              paid = true;
+              success(`Payment confirmed! New balance: $${current.remaining.toFixed(2)}`);
+              break;
+            }
+          } catch {
+            // ignore transient errors, keep polling
+          }
+        }
+
+        if (!paid) {
+          warn('Payment not confirmed within 5 minutes. Please check your balance later.');
+        }
       } else {
-        success(`Purchase successful! New balance: $${result.new_balance.toFixed(2)} (txn: ${result.transaction_id})`);
+        // Immediate (mock) mode
+        if (opts.json) {
+          output(result, { json: true });
+        } else {
+          success(`Purchase successful! New balance: $${result.new_balance.toFixed(2)} (txn: ${result.transaction_id})`);
+        }
       }
     });
 
