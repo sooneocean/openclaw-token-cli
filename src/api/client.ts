@@ -10,10 +10,23 @@ export interface ApiClientOptions {
   verbose?: boolean;
 }
 
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 500;
+
+function isRetryable(error: AxiosError): boolean {
+  if (!error.response) return true; // network error
+  const status = error.response.status;
+  return status >= 500 || status === 429;
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function createApiClient(options: ApiClientOptions): AxiosInstance {
   const instance = axios.create({
     baseURL: options.baseURL || 'https://proxy.openclaw-token.dev/v1',
-    timeout: 10_000,
+    timeout: 15_000,
     headers: { 'Content-Type': 'application/json' },
   });
 
@@ -107,7 +120,7 @@ export function createApiClient(options: ApiClientOptions): AxiosInstance {
       },
     );
   } else {
-    // Real mode: response error interceptor
+    // Real mode: response error interceptor with retry
     instance.interceptors.response.use(
       (response) => {
         if (options.verbose) {
@@ -115,7 +128,20 @@ export function createApiClient(options: ApiClientOptions): AxiosInstance {
         }
         return response;
       },
-      (error: AxiosError<ApiErrorResponse>) => {
+      async (error: AxiosError<ApiErrorResponse>) => {
+        const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
+        const retryCount = config?._retryCount || 0;
+
+        if (config && isRetryable(error) && retryCount < MAX_RETRIES) {
+          config._retryCount = retryCount + 1;
+          const delay = RETRY_BASE_MS * Math.pow(2, retryCount);
+          if (options.verbose) {
+            process.stderr.write(`[verbose] Retry ${config._retryCount}/${MAX_RETRIES} in ${delay}ms...\n`);
+          }
+          await sleep(delay);
+          return instance.request(config);
+        }
+
         if (error.response) {
           const { status, data } = error.response;
           throw mapApiError(status, data?.error?.code, data?.error?.message);

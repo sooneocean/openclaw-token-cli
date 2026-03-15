@@ -1,6 +1,6 @@
 {
   "name": "openclaw-token",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain",
   "type": "module",
   "bin": {
@@ -17,6 +17,19 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "openclaw",
+    "token",
+    "cli",
+    "api-key",
+    "credits"
+  ],
+  "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
