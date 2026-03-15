@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import ora, { type Ora } from 'ora';
 import { createApiClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
 import type {
@@ -124,12 +125,35 @@ export class OAuthService {
     process.stderr.write(codeDisplay);
     this.tryOpenBrowser(deviceCode.verification_uri);
 
-    // Step 3: Poll for token
-    const accessToken = await this.pollForToken(
-      deviceCode.device_code,
-      deviceCode.interval,
-      deviceCode.expires_in,
-    );
+    // Step 3: Poll for token with spinner + countdown
+    const useSpinner = !process.env.NO_COLOR && !process.argv.includes('--no-color');
+    const deadline = Date.now() + deviceCode.expires_in * 1000;
+    let spinner: Ora | undefined;
+    let countdownTimer: ReturnType<typeof setInterval> | undefined;
+
+    if (useSpinner) {
+      spinner = ora(this.formatCountdown(deadline)).start();
+      countdownTimer = setInterval(() => {
+        if (spinner) spinner.text = this.formatCountdown(deadline);
+      }, 1000);
+    } else {
+      process.stderr.write(`Waiting for authorization... (expires in ${deviceCode.expires_in}s)\n`);
+    }
+
+    let accessToken: string;
+    try {
+      accessToken = await this.pollForToken(
+        deviceCode.device_code,
+        deviceCode.interval,
+        deviceCode.expires_in,
+      );
+      if (spinner) spinner.succeed('Authorization received');
+    } catch (err) {
+      if (spinner) spinner.fail('Authorization failed');
+      throw err;
+    } finally {
+      if (countdownTimer) clearInterval(countdownTimer);
+    }
 
     // Step 4: Get user info + account merge/create
     const userInfo = await this.fetchUserInfo(accessToken);
@@ -149,6 +173,13 @@ export class OAuthService {
       management_key: userInfo.management_key,
       merged: userInfo.merged,
     };
+  }
+
+  private formatCountdown(deadline: number): string {
+    const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    return `Waiting for authorization... (expires in ${minutes}m ${seconds}s)`;
   }
 
   private tryOpenBrowser(url: string): void {
