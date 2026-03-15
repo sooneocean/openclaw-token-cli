@@ -1,8 +1,6 @@
 # OpenClaw Token CLI
 
-## Overview
-
-Credit-based API proxy CLI client for OpenClaw. Pre-purchase credits, provision isolated API keys with optional spend limits, and inject the proxy as a fallback token provider into your OpenClaw config.
+CLI client for the OpenClaw Token proxy. Pre-purchase credits, provision isolated API keys with spend limits, and inject the proxy as a fallback token provider into your OpenClaw config.
 
 ## Installation
 
@@ -32,159 +30,170 @@ openclaw-token integrate
 
 ### auth
 
-```
-openclaw-token auth register          Register a new account
-openclaw-token auth login             Login to an existing account
-openclaw-token auth logout            Clear local credentials
-openclaw-token auth whoami            Show current account info (email, plan, balance, key count)
-```
+| Command | Description |
+|---------|-------------|
+| `auth register` | Create a new account |
+| `auth login` | Log in (email/password or `--github` for OAuth) |
+| `auth logout` | Clear local credentials |
+| `auth whoami` | Show current account info |
+| `auth rotate` | Rotate management key (old key immediately invalidated) |
 
 ### credits
 
-```
-openclaw-token credits balance        Show total, used, and remaining credits
-openclaw-token credits buy            Purchase credits
-  --amount <number>                   Amount in USD (required, minimum $5.00)
-  --yes                               Skip confirmation prompt
-
-openclaw-token credits history        List transactions
-  --limit <number>                    Items per page (default: 20)
-  --offset <number>                   Pagination offset (default: 0)
-  --type <type>                       Filter: purchase | usage | refund
-
-openclaw-token credits auto-topup     View or configure automatic top-up
-  --enable                            Enable auto top-up
-  --disable                           Disable auto top-up
-  --threshold <number>                Trigger when balance drops below this USD amount
-  --amount <number>                   Amount to top up in USD
-```
+| Command | Description |
+|---------|-------------|
+| `credits balance` | Show total, used, and remaining credits |
+| `credits buy --amount <USD>` | Purchase credits (min $5, 5.5% fee) |
+| `credits history` | List transactions (`--limit`, `--offset`, `--type`) |
+| `credits auto-topup` | View/configure auto top-up (`--enable`, `--disable`, `--threshold`, `--amount`) |
 
 ### keys
 
-```
-openclaw-token keys create            Provision a new API key (shown once — save it immediately)
-  --name <name>                       Key label (required)
-  --limit <number>                    Credit limit in USD
-  --limit-reset <frequency>           Reset period: daily | weekly | monthly
-  --expires <date>                    Expiry in ISO 8601 format
-
-openclaw-token keys list              List all provisioned keys
-
-openclaw-token keys info <hash>       Detailed usage breakdown by period and model
-
-openclaw-token keys update <hash>     Modify key settings
-  --limit <number>                    New credit limit
-  --limit-reset <frequency>           New reset period
-  --disabled                          Disable key
-  --enabled                           Re-enable key
-
-openclaw-token keys revoke <hash>     Permanently revoke a key
-  --yes                               Skip confirmation prompt
-```
+| Command | Description |
+|---------|-------------|
+| `keys create --name <name>` | Provision a new API key (`--limit`, `--limit-reset`, `--expires`) |
+| `keys list` | List all keys (`--sort <field>`, `--filter <expr>`) |
+| `keys info <hash>` | Detailed usage breakdown |
+| `keys update <hash>` | Modify settings (`--limit`, `--disabled`, `--enabled`) |
+| `keys revoke <hash>` | Permanently revoke a key |
+| `keys revoke-all` | Revoke all active keys |
+| `keys rotate <hash>` | Rotate key value (hash stays the same) |
+| `keys export` | Export keys to JSON/CSV (`--format`, `--output`) |
+| `keys import <file>` | Batch create keys from JSON file |
+| `keys usage <hash>` | Show usage (`--watch` for live monitoring, `--interval`) |
 
 ### integrate
 
-```
-openclaw-token integrate              Inject OpenClaw Token as a fallback provider in OpenClaw config
-openclaw-token integrate --status     Show current integration status
-openclaw-token integrate --remove     Remove the integration from OpenClaw config
+| Command | Description |
+|---------|-------------|
+| `integrate` | Inject as fallback provider in OpenClaw config |
+| `integrate --status` | Show integration status |
+| `integrate --remove` | Remove integration |
+
+### profile
+
+Manage multiple accounts/servers with named profiles.
+
+| Command | Description |
+|---------|-------------|
+| `profile create <name>` | Create a new profile |
+| `profile switch <name>` | Switch active profile |
+| `profile list` | List all profiles |
+| `profile current` | Show active profile |
+| `profile delete <name>` | Delete a profile |
+
+### config
+
+| Command | Description |
+|---------|-------------|
+| `config get <key>` | Read a config value |
+| `config set <key> <value>` | Write a config value |
+| `config list` | Show all config entries |
+
+### audit
+
+| Command | Description |
+|---------|-------------|
+| `audit show` | Show recent operation log (`--limit`) |
+| `audit clear` | Clear audit log |
+
+### completion
+
+| Command | Description |
+|---------|-------------|
+| `completion bash` | Output bash completion script |
+| `completion zsh` | Output zsh completion script |
+
+Install completions:
+
+```bash
+# Bash
+eval "$(openclaw-token completion bash)"
+
+# Zsh
+eval "$(openclaw-token completion zsh)"
 ```
 
 ## Global Flags
 
 | Flag | Description |
 |------|-------------|
-| `--json` | Print output as JSON (useful for scripting) |
-| `--mock` | Use mock backend; no real API calls are made |
+| `--json` | Output as JSON (useful for scripting) |
+| `--mock` | Use in-memory mock backend |
+| `--profile <name>` | Use a specific profile |
 | `--no-color` | Disable colored output |
-| `--verbose` | Print outgoing API requests for debugging |
+| `--verbose` | Print API requests for debugging |
 | `--version` | Print CLI version |
-| `--help` | Print help for a command |
+| `--help` | Print help |
 
-Global flags must be placed before the subcommand:
+Global flags go before the subcommand:
 
 ```bash
 openclaw-token --json credits balance
-openclaw-token --verbose keys list
+openclaw-token --profile work keys list
 ```
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `OPENCLAW_TOKEN_KEY` | Management API key (alternative to storing credentials on disk) |
-| `OPENCLAW_TOKEN_API_BASE` | Override the API base URL |
-| `OPENCLAW_TOKEN_CONFIG_DIR` | Override the config directory path |
-| `OPENCLAW_TOKEN_MOCK=1` | Enable mock mode without passing `--mock` each time |
-| `NO_COLOR` | Disable colored output (standard convention) |
+| `OPENCLAW_TOKEN_KEY` | Management API key (must start with `sk-mgmt-`) |
+| `OPENCLAW_TOKEN_API_BASE` | Override API base URL |
+| `OPENCLAW_TOKEN_CONFIG_DIR` | Override config directory |
+| `OPENCLAW_TOKEN_MOCK=1` | Enable mock mode globally |
+| `NO_COLOR` | Disable colored output |
 
 ## Mock Mode
 
-Mock mode runs entirely in-process with no real API calls. All data is stored in memory and reset on each process invocation.
-
-### Enable Mock Mode
+Mock mode runs entirely in-process with no real API calls. Data resets on each invocation.
 
 ```bash
-# Via flag (before subcommand)
+# Via flag
 openclaw-token --mock auth register
 
-# Via environment variable (persists across invocations in the same shell session)
+# Via environment variable
 export OPENCLAW_TOKEN_MOCK=1
 openclaw-token credits balance
 ```
 
-### Pre-seeded Demo Account
-
-When mock mode is active, a demo account is available out of the box:
+**Demo account** (pre-seeded in mock mode):
 
 | Field | Value |
 |-------|-------|
 | Email | `demo@openclaw.dev` |
 | Password | `Demo1234!` |
-| Initial credits | $100.00 |
+| Credits | $100.00 |
 
-```bash
-# Login with demo credentials
-openclaw-token --mock auth login
-# Email: demo@openclaw.dev
-# Password: Demo1234!
+## Error Handling
 
-# Check balance
-openclaw-token --mock credits balance
+- Network errors and 5xx responses automatically retry up to 3 times with exponential backoff
+- All errors include actionable suggestions (e.g. "Run: openclaw-token auth login")
+- Request timeout: 15 seconds
 
-# Create a key
-openclaw-token --mock keys create --name test-key
-```
+## Security
 
-### Mock Behavior Notes
-
-- Any token in the format `sk-mgmt-<UUID>` is treated as valid and maps to the demo account
-- Data does **not** persist between process invocations
-- Idempotency keys are checked within a single process run
-- The mock backend simulates all API endpoints including error cases
-
----
+- Config files are written with `0o600` permissions (owner-only)
+- Sensitive values are redacted in verbose output
+- `OPENCLAW_TOKEN_KEY` is validated on startup
 
 ## Development
 
 ```bash
 npm install
 
-# Run directly from source (no build step needed)
+# Run from source
 npm run dev -- --mock auth whoami
-npm run dev -- --mock credits balance
 
-# Run tests
+# Run tests (173 tests)
 npm test
-
-# Run tests in watch mode
-npm run test:watch
 
 # Type check
 npm run typecheck
 
-# Build for production
+# Build
 npm run build
 ```
 
-The compiled output lands in `dist/`. The package bin entry points to `dist/bin/openclaw-token.js`.
+## License
+
+[MIT](LICENSE)
