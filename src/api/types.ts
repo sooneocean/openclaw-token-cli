@@ -74,7 +74,7 @@ export type CreditsBuyResult =
 
 export interface CreditHistoryEntry {
   id: string;
-  type: 'purchase' | 'usage' | 'refund';
+  type: 'purchase' | 'usage' | 'refund' | 'auto_topup';
   amount: number;
   balance_after: number;
   description: string;
