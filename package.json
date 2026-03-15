@@ -1,6 +1,6 @@
 {
   "name": "openclaw-token",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain",
   "type": "module",
   "bin": {

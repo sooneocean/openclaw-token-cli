@@ -1,9 +1,10 @@
+import fs from 'node:fs/promises';
 import { Command } from 'commander';
 import { confirm } from '@inquirer/prompts';
 import { KeysService } from '../services/keys.service.js';
 import { requireAuth } from '../utils/auth-guard.js';
 import { getGlobalOptions } from '../index.js';
-import { output, success, warn } from '../output/formatter.js';
+import { output, success, warn, info } from '../output/formatter.js';
 import { createTable } from '../output/table.js';
 import { withSpinner } from '../output/spinner.js';
 
@@ -315,6 +316,180 @@ export function createKeysCommand(): Command {
           }
         }
       }
+    });
+
+  // ── Export ─────────────────────────────────────────────────────────
+  keys
+    .command('export')
+    .description('Export all keys to a file\n\nExamples:\n  $ openclaw-token keys export --format json --output keys.json\n  $ openclaw-token keys export --format csv')
+    .option('--format <format>', 'Output format: json or csv', 'json')
+    .option('--output <file>', 'Output file path (default: stdout)')
+    .action(async (cmdOpts) => {
+      const opts = getGlobalOptions();
+      const token = await requireAuth();
+      const service = new KeysService({ mock: opts.mock, verbose: opts.verbose });
+      const result = await withSpinner('Fetching keys...', () => service.list(token));
+
+      let content: string;
+      if (cmdOpts.format === 'csv') {
+        const header = 'hash,name,credit_limit,limit_reset,usage,disabled,created_at,expires_at';
+        const rows = result.items.map((k) =>
+          [k.hash, k.name, k.credit_limit ?? '', k.limit_reset ?? '', k.usage, k.disabled, k.created_at, k.expires_at ?? ''].join(','),
+        );
+        content = [header, ...rows].join('\n') + '\n';
+      } else {
+        content = JSON.stringify(result.items, null, 2) + '\n';
+      }
+
+      if (cmdOpts.output) {
+        await fs.writeFile(cmdOpts.output, content, 'utf-8');
+        success(`Exported ${result.items.length} keys to ${cmdOpts.output}`);
+      } else {
+        process.stdout.write(content);
+      }
+    });
+
+  // ── Import ─────────────────────────────────────────────────────────
+  keys
+    .command('import')
+    .description('Import keys from a JSON file (creates new keys with specified settings)')
+    .argument('<file>', 'JSON file with key definitions [{name, credit_limit?, limit_reset?}]')
+    .option('--yes', 'Skip confirmation', false)
+    .action(async (file: string, cmdOpts) => {
+      const opts = getGlobalOptions();
+      const token = await requireAuth();
+
+      let raw: string;
+      try {
+        raw = await fs.readFile(file, 'utf-8');
+      } catch {
+        throw new Error(`Cannot read file: ${file}`);
+      }
+
+      let entries: Array<{ name: string; credit_limit?: number | null; limit_reset?: string | null }>;
+      try {
+        entries = JSON.parse(raw);
+        if (!Array.isArray(entries)) throw new Error('Expected array');
+      } catch {
+        throw new Error(`Invalid JSON format. Expected an array of {name, credit_limit?, limit_reset?}.`);
+      }
+
+      if (entries.length === 0) {
+        output('No keys to import.');
+        return;
+      }
+
+      if (!cmdOpts.yes) {
+        const confirmed = await confirm({ message: `Import ${entries.length} keys?` });
+        if (!confirmed) {
+          output('Cancelled.');
+          return;
+        }
+      }
+
+      const service = new KeysService({ mock: opts.mock, verbose: opts.verbose });
+      const results: { name: string; status: string; hash?: string }[] = [];
+
+      for (const entry of entries) {
+        if (!entry.name) {
+          results.push({ name: '(unnamed)', status: 'skipped: missing name' });
+          continue;
+        }
+        try {
+          const created = await service.create(token, {
+            name: entry.name,
+            credit_limit: entry.credit_limit ?? null,
+            limit_reset: (entry.limit_reset as 'daily' | 'weekly' | 'monthly') ?? null,
+          });
+          results.push({ name: entry.name, status: 'created', hash: created.hash });
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          results.push({ name: entry.name, status: `error: ${msg}` });
+        }
+      }
+
+      if (opts.json) {
+        output({ imported: results.filter((r) => r.status === 'created').length, results }, { json: true });
+      } else {
+        const created = results.filter((r) => r.status === 'created').length;
+        success(`${created}/${entries.length} keys imported.`);
+        for (const r of results.filter((r) => r.status !== 'created')) {
+          warn(`  ${r.name}: ${r.status}`);
+        }
+      }
+    });
+
+  // ── Usage Watch ────────────────────────────────────────────────────
+  keys
+    .command('usage')
+    .description('Monitor key usage (live watch mode)')
+    .argument('<hash>', 'Key hash')
+    .option('--watch', 'Continuously poll for usage updates')
+    .option('--interval <seconds>', 'Polling interval in seconds', '5')
+    .action(async (hash: string, cmdOpts) => {
+      const opts = getGlobalOptions();
+      const token = await requireAuth();
+      const service = new KeysService({ mock: opts.mock, verbose: opts.verbose });
+
+      const fetchAndDisplay = async (): Promise<boolean> => {
+        try {
+          const result = await service.info(token, hash);
+          if (opts.json) {
+            output({
+              hash: result.hash,
+              name: result.name,
+              usage: result.usage,
+              usage_daily: result.usage_daily,
+              usage_weekly: result.usage_weekly,
+              usage_monthly: result.usage_monthly,
+              requests_count: result.requests_count,
+              timestamp: new Date().toISOString(),
+            }, { json: true });
+          } else {
+            const time = new Date().toLocaleTimeString();
+            const line = `[${time}] ${result.name} | Usage: $${result.usage.toFixed(2)} | Daily: $${result.usage_daily.toFixed(2)} | Weekly: $${result.usage_weekly.toFixed(2)} | Requests: ${result.requests_count}`;
+            process.stdout.write('\r\x1b[K' + line);
+          }
+          return true;
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg.includes('expired') || msg.includes('invalid') || msg.includes('401')) {
+            warn(`\nSession expired. Please re-login.`);
+            return false;
+          }
+          warn(`\nError: ${msg}. Retrying...`);
+          return true;
+        }
+      };
+
+      if (!cmdOpts.watch) {
+        await fetchAndDisplay();
+        if (!opts.json) process.stdout.write('\n');
+        return;
+      }
+
+      const interval = Math.max(1, parseInt(cmdOpts.interval, 10) || 5) * 1000;
+      info(`Watching key ${hash} (interval: ${interval / 1000}s). Press Ctrl+C to stop.\n`);
+
+      const shouldContinue = await fetchAndDisplay();
+      if (!shouldContinue) return;
+
+      const timer = setInterval(async () => {
+        const ok = await fetchAndDisplay();
+        if (!ok) {
+          clearInterval(timer);
+          process.exit(1);
+        }
+      }, interval);
+
+      process.on('SIGINT', () => {
+        clearInterval(timer);
+        process.stdout.write('\n');
+        process.exit(0);
+      });
+
+      // Keep process alive
+      await new Promise(() => {});
     });
 
   return keys;

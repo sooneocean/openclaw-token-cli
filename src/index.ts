@@ -8,6 +8,7 @@ import { createIntegrateCommand } from './commands/integrate.js';
 import { createProfileCommand } from './commands/profile.js';
 import { createAuditCommand } from './commands/audit.js';
 import { createCompletionCommand } from './commands/completion.js';
+import { createConfigCommand } from './commands/config.js';
 import { setActiveProfile } from './config/paths.js';
 import { ConfigManager } from './config/manager.js';
 import { AuditLogger } from './audit/logger.js';
@@ -45,7 +46,7 @@ export function createProgram(opts: CreateProgramOptions = {}): Command {
     .description(
       'CLI client for OpenClaw Token proxy — manage credits, provision API keys, integrate with OpenClaw fallback chain',
     )
-    .version('0.5.0')
+    .version('0.6.0')
     .option('--json', 'Output in JSON format', opts.json ?? false)
     .option('--mock', 'Use mock backend (no real API calls)', opts.mock ?? false)
     .option('--no-color', 'Disable colored output')
@@ -60,6 +61,7 @@ export function createProgram(opts: CreateProgramOptions = {}): Command {
   prog.addCommand(createProfileCommand());
   prog.addCommand(createAuditCommand());
   prog.addCommand(createCompletionCommand());
+  prog.addCommand(createConfigCommand());
 
   return prog;
 }
