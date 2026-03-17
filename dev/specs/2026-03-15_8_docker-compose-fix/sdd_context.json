@@ -1,0 +1,49 @@
+{
+  "sdd_context": {
+    "version": "2.2.1",
+    "feature": "docker-compose-fix",
+    "spec_mode": "quick",
+    "spec_folder": "dev/specs/2026-03-15_8_docker-compose-fix",
+    "work_type": "new_feature",
+    "status": "completed",
+    "execution_mode": "autopilot",
+    "current_stage": "S7",
+    "started_at": "2026-03-15T22:20:00+08:00",
+    "last_updated": "2026-03-15T22:20:00+08:00",
+    "last_updated_by": "orchestrator",
+    "failed_approaches": [],
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "completed_at": "2026-03-15T22:20:00+08:00",
+        "agent": "requirement-analyst",
+        "output": {
+          "work_type": "new_feature",
+          "requirement": "補完 openclaw-token-server Docker Compose 配置缺口（env var 缺漏）",
+          "goal": "git clone 後 docker compose up -d 即可跑起完整開發環境",
+          "pain_points": [
+            ".env.example 只有 4/9 個 env var",
+            "docker-compose.yml 缺 STRIPE_* 和 APP_BASE_URL",
+            "README env 表格缺 Stripe 相關 var"
+          ],
+          "success_criteria": [
+            "docker compose up -d 後 curl localhost:3000 回傳 {status:ok}",
+            ".env.example 覆蓋 config.ts 全部 env var",
+            "docker-compose.yml environment 傳入所有 var",
+            "README env 表格與 .env.example 一致"
+          ],
+          "scope_in": ["docker-compose.yml", ".env.example", "README.md"],
+          "scope_out": ["Dockerfile", ".dockerignore", "TypeScript source code", "CI/CD"],
+          "constraints": ["不修改 TypeScript 原始碼", "PostgreSQL 16-alpine"]
+        }
+      },
+      "s1": { "status": "completed" },
+      "s2": { "status": "skipped" },
+      "s3": { "status": "completed" },
+      "s4": { "status": "completed" },
+      "s5": { "status": "completed" },
+      "s6": { "status": "completed" },
+      "s7": { "status": "completed" }
+    }
+  }
+}

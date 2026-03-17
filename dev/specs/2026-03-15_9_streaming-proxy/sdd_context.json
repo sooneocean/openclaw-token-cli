@@ -1,0 +1,380 @@
+{
+  "sdd_context": {
+    "version": "3.0.0",
+    "feature": "SSE Streaming Proxy",
+    "current_stage": "S7",
+    "spec_mode": "full",
+    "spec_mode_reason": "涉及 streaming 架構、SSE 解析、token 計費、error handling，邏輯複雜，需完整 spec",
+    "work_type": "new_feature",
+    "spec_folder": "dev/specs/2026-03-15_9_streaming-proxy",
+    "execution_mode": "autopilot",
+    "status": "completed",
+    "started_at": "2026-03-15T00:00:00.000Z",
+    "last_updated": "2026-03-16T00:45:00.000Z",
+    "last_updated_by": "architect",
+    "stages": {
+      "s0": {
+        "status": "completed",
+        "agent": "requirement-analyst",
+        "started_at": "2026-03-15T00:00:00.000Z",
+        "output": {
+          "brief_spec_path": "dev/specs/2026-03-15_9_streaming-proxy/s0_brief_spec.md",
+          "work_type": "new_feature",
+          "requirement": "為 openclaw-token-server 的 API Proxy 加入 SSE Streaming 支援，將上游 LLM 的 streaming response 即時逐 chunk 轉發給 caller，並在 stream 結束後從 usage chunk 扣減 credits",
+          "goal": "讓所有符合 OpenAI streaming 協議的 client 能無縫透過 proxy 發送 stream:true 請求，並正確記錄計費",
+          "pain_points": [
+            "proxy.ts 硬拒絕所有 stream:true 請求（400 UNSUPPORTED），streaming LLM client 完全無法使用 proxy",
+            "non-streaming 大型回應等待時間過長，影響使用體驗",
+            "OpenAI-compatible API 標準使用場景大多依賴 streaming，缺少支援使 proxy 市場定位受限"
+          ],
+          "success_criteria": [
+            "stream:true 請求不再回傳 400，改為 SSE 串流回應",
+            "SSE 格式符合 OpenAI 協議（data: {...} 行，結尾 data: [DONE]）",
+            "Time to First Byte 不超過 non-streaming baseline +50ms",
+            "stream 結束後 usage_logs 有記錄且 cost > 0（非零 token 請求）",
+            "stream 結束後 credit_balances.total_usage 正確增加",
+            "client 斷線不造成 server crash 或 unhandled rejection",
+            "上游 streaming 中途斷線 server 乾淨關閉不 crash",
+            "現有 non-streaming 行為完全不受影響（regression-free）",
+            "stream 請求 auth 失敗時正確回傳 401/429"
+          ],
+          "scope_in": [
+            "proxy.ts 修改：移除 L29-31 拒絕邏輯，加入 streaming 分支",
+            "在轉發前注入 stream_options.include_usage:true",
+            "建立 SSE streaming pipe（上游 response.body → TextDecoder → 轉發給 caller）",
+            "實作行緩衝區（line buffer）處理跨 chunk 的不完整 SSE 事件",
+            "偵測 c.req.raw.signal（client disconnect），abort 上游 fetch",
+            "上游 error chunk、中途斷線的錯誤處理",
+            "從 SSE chunk 解析並捕獲 usage 資料",
+            "stream 結束後呼叫現有 calculateCost + recordUsage",
+            "可選：新增 src/utils/sse-parser.ts 將 SSE 解析邏輯獨立為 utility"
+          ],
+          "scope_out": [
+            "CLI repo（token-cli）的任何修改",
+            "pricing.ts 的 model 定價修改",
+            "usage.ts 的 recordUsage 邏輯修改",
+            "proxy-auth.ts 的驗證邏輯修改",
+            "streaming 過程中的動態 credits 監控（即時限流、stream 中途截止）",
+            "credits 負餘額補扣機制",
+            "WebSocket streaming 支援",
+            "上游 API 非 OpenAI 相容格式的特殊處理"
+          ],
+          "constraints": [
+            "Runtime Bun：支援 Web Streams API，不支援 Node.js stream 模組",
+            "Framework Hono 4.6：使用 c.stream() 或 new Response(ReadableStream)",
+            "不引入新 npm 依賴（無 tiktoken）",
+            "streaming recordUsage 失敗無法通知 caller（HTTP streaming 協議限制）",
+            "方案選定：方案 A（逐 chunk 轉發 + 從 usage chunk 扣費）"
+          ],
+          "functional_areas": [
+            {
+              "id": "FA-A",
+              "name": "SSE Streaming Proxy",
+              "description": "接收 stream:true 請求，逐 chunk 轉發上游 SSE，處理 client 斷線與上游錯誤",
+              "independence": "low"
+            },
+            {
+              "id": "FA-B",
+              "name": "Streaming Token 計費",
+              "description": "從 streaming 結束後的 usage chunk 擷取 token 數，呼叫 recordUsage 扣減 credits",
+              "independence": "low"
+            }
+          ],
+          "decomposition_strategy": "single_sop",
+          "child_sops": []
+        }
+      },
+      "s1": {
+        "status": "completed",
+        "agents": ["codebase-explorer", "architect"],
+        "started_at": "2026-03-15T01:00:00.000Z",
+        "completed_at": "2026-03-16T00:30:00.000Z",
+        "output": {
+          "completed_phases": [1, 2],
+          "dev_spec_path": "dev/specs/2026-03-15_9_streaming-proxy/s1_dev_spec.md",
+          "solution_summary": "TransformStream pass-through proxy：上游 SSE ReadableStream 通過 TransformStream（line buffer + usage 擷取），以 new Response(transformedStream) 回傳。flush() 觸發 recordUsage 計費。",
+          "impact_scope": {
+            "primary_files": [
+              {
+                "file": "src/routes/proxy.ts",
+                "type": "modify",
+                "impact": "high",
+                "description": "核心修改：移除 L29-31 blocking guard，加入 streaming 分支（TransformStream pipe + usage 擷取 + recordUsage）"
+              }
+            ],
+            "new_files": [
+              {
+                "file": "src/utils/sse-parser.ts",
+                "type": "new",
+                "impact": "medium",
+                "description": "SSE line-buffer 解析工具：createSSEUsageExtractor() 回傳 TransformStream + getUsage()"
+              },
+              {
+                "file": "tests/integration/proxy-streaming.test.ts",
+                "type": "new",
+                "impact": "medium",
+                "description": "Streaming 整合測試 TC-S01~TC-S10，含 mock upstream SSE server"
+              }
+            ],
+            "no_change_confirmed": [
+              "src/utils/pricing.ts",
+              "src/utils/usage.ts",
+              "src/middleware/proxy-auth.ts",
+              "src/app.ts",
+              "src/errors.ts",
+              "src/db/client.ts",
+              "src/config.ts"
+            ]
+          },
+          "tasks": [
+            {
+              "id": "T1",
+              "title": "SSE line buffer + usage parser utility",
+              "type": "backend",
+              "complexity": "M",
+              "agent": "backend-expert",
+              "depends": []
+            },
+            {
+              "id": "T2",
+              "title": "proxy.ts streaming 分支",
+              "type": "backend",
+              "complexity": "M",
+              "agent": "backend-expert",
+              "depends": ["T1"]
+            },
+            {
+              "id": "T3",
+              "title": "更新 TC-08 + 新增 streaming 整合測試",
+              "type": "backend",
+              "complexity": "M",
+              "agent": "backend-expert",
+              "depends": ["T2"]
+            },
+            {
+              "id": "T4",
+              "title": "Edge case 測試（client 斷線、upstream 錯誤）",
+              "type": "backend",
+              "complexity": "S",
+              "agent": "backend-expert",
+              "depends": ["T2"]
+            }
+          ],
+          "acceptance_criteria": [
+            "stream:true 回傳 Content-Type: text/event-stream SSE 回應",
+            "stream 結束後 usage_logs 記錄 cost > 0",
+            "non-streaming 行為完全不受影響（TC-01~TC-16 通過，TC-08 更新）",
+            "client 斷線不 crash、不 unhandled rejection",
+            "upstream 非 2xx 回傳錯誤不進入 streaming",
+            "無 usage chunk 時 fallback cost=0"
+          ],
+          "assumptions": [
+            "Bun TransformStream flush() 支援 async（回傳 Promise）",
+            "Hono handler 可直接回傳 new Response() 物件",
+            "上游 OpenAI-compatible API 支援 stream_options.include_usage"
+          ],
+          "tech_debt": [
+            "proxy.test.ts 混用 @hono/node-server 與 Bun.serve",
+            "proxy.ts auto-topup 是 placeholder，streaming 分支複製相同邏輯，未來需統一重構"
+          ],
+          "regression_risks": [
+            "non-streaming 路徑必須完全不受影響",
+            "proxy.test.ts TC-01~TC-16 全部通過（TC-08 更新）",
+            "stream:false 請求不應走進 streaming 分支"
+          ],
+          "risks": [
+            {
+              "risk": "client 斷線導致 recordUsage 未執行",
+              "level": "high",
+              "mitigation": "偵測 AbortSignal abort upstream fetch；漏扣是已知可接受風險"
+            },
+            {
+              "risk": "跨 chunk 不完整 SSE line 導致 usage 擷取失敗",
+              "level": "high",
+              "mitigation": "line buffer 以 \\n 切分，不完整行保留在 buffer"
+            },
+            {
+              "risk": "TransformStream flush() async 行為",
+              "level": "medium",
+              "mitigation": "Web Streams spec 支援 async flush，Bun 預期支援"
+            },
+            {
+              "risk": "stream_options.include_usage 不被上游支援",
+              "level": "medium",
+              "mitigation": "fallback usage={0,0,0}，cost=0"
+            }
+          ]
+        }
+      },
+      "s2": {
+        "status": "completed",
+        "agent": "architect",
+        "completed_at": "2026-03-16T00:40:00.000Z"
+      },
+      "s3": {
+        "status": "pending_confirmation",
+        "agent": "architect",
+        "completed_at": "2026-03-16T00:45:00.000Z",
+        "output": {
+          "implementation_plan_path": "dev/specs/2026-03-15_9_streaming-proxy/s3_implementation_plan.md",
+          "waves": [
+            {
+              "wave": 1,
+              "name": "utility 層",
+              "tasks": [
+                {
+                  "id": "T1",
+                  "name": "SSE line buffer + usage parser utility",
+                  "agent": "backend-expert",
+                  "dependencies": [],
+                  "complexity": "M",
+                  "dod": [
+                    "export createSSEUsageExtractor()",
+                    "line buffer 正確處理跨 chunk 不完整行",
+                    "正確擷取 usage chunk",
+                    "JSON.parse 失敗 console.warn 並跳過",
+                    "chunk 原樣 enqueue",
+                    "單元測試全數通過"
+                  ],
+                  "parallel": false,
+                  "affected_files": [
+                    "src/utils/sse-parser.ts",
+                    "tests/unit/sse-parser.test.ts"
+                  ],
+                  "tdd_plan": {
+                    "test_file": "tests/unit/sse-parser.test.ts",
+                    "test_cases": [
+                      "正常 SSE 序列擷取 usage",
+                      "跨 chunk 的不完整行 (line buffer)",
+                      "多個 SSE 事件在同一 chunk",
+                      "無 usage chunk 回傳 null",
+                      "malformed JSON warn 並跳過",
+                      "data: [DONE] 不觸發 JSON.parse",
+                      "非 data: 行被忽略",
+                      "chunk 原樣轉發不修改 bytes"
+                    ],
+                    "test_command": "cd /Users/asd/demo/openclaw-token-server && bun test tests/unit/sse-parser.test.ts"
+                  }
+                }
+              ],
+              "parallel": false
+            },
+            {
+              "wave": 2,
+              "name": "核心實作",
+              "tasks": [
+                {
+                  "id": "T2",
+                  "name": "proxy.ts streaming 分支",
+                  "agent": "backend-expert",
+                  "dependencies": ["T1"],
+                  "complexity": "M",
+                  "dod": [
+                    "移除 L29-31 blocking guard",
+                    "stream:true 回傳 Content-Type: text/event-stream",
+                    "stream_options.include_usage:true 注入",
+                    "upstream 非 2xx 回傳錯誤不進入 streaming",
+                    "stream 結束後 recordUsage 正確呼叫",
+                    "client 斷線 abort upstream，不呼叫 recordUsage",
+                    "recordUsage 失敗 console.error 不 crash",
+                    "non-streaming 路徑完全不受影響"
+                  ],
+                  "parallel": false,
+                  "affected_files": [
+                    "src/routes/proxy.ts"
+                  ],
+                  "tdd_plan": null
+                }
+              ],
+              "parallel": false
+            },
+            {
+              "wave": 3,
+              "name": "測試覆蓋",
+              "tasks": [
+                {
+                  "id": "T3",
+                  "name": "更新 TC-08 + 新增 streaming 整合測試 TC-S01~S06",
+                  "agent": "backend-expert",
+                  "dependencies": ["T2"],
+                  "complexity": "M",
+                  "dod": [
+                    "TC-08 更新不再驗證 stream:true -> 400",
+                    "proxy-streaming.test.ts 建立含 TC-S01~TC-S06",
+                    "mock upstream 正確模擬 SSE 回應",
+                    "TC-01~TC-16 全數通過（回歸）",
+                    "TC-S01~TC-S06 全數通過"
+                  ],
+                  "parallel": true,
+                  "affected_files": [
+                    "tests/integration/proxy.test.ts",
+                    "tests/integration/proxy-streaming.test.ts"
+                  ],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/proxy-streaming.test.ts",
+                    "test_cases": [
+                      "TC-S01: streaming response Content-Type is text/event-stream",
+                      "TC-S02: usage_logs recorded with cost > 0 after stream ends",
+                      "TC-S03: credit_balances.total_usage increases after stream",
+                      "TC-S04: stream:false uses non-streaming path",
+                      "TC-S05: upstream 4xx returns error without streaming",
+                      "TC-S06: no usage chunk records cost=0"
+                    ],
+                    "test_command": "cd /Users/asd/demo/openclaw-token-server && bun test tests/integration/proxy-streaming.test.ts"
+                  }
+                },
+                {
+                  "id": "T4",
+                  "name": "Edge case 測試 TC-S07~S10",
+                  "agent": "backend-expert",
+                  "dependencies": ["T2"],
+                  "complexity": "S",
+                  "dod": [
+                    "TC-S07~TC-S10 建立並通過",
+                    "TC-S07: usage_logs 無新增記錄（斷線不計費）",
+                    "TC-S08: server 無 crash 連線乾淨關閉",
+                    "TC-S09: malformed 行不截斷 stream",
+                    "TC-S10: 合併 chunk 正確解析 usage"
+                  ],
+                  "parallel": true,
+                  "affected_files": [
+                    "tests/integration/proxy-streaming.test.ts"
+                  ],
+                  "tdd_plan": {
+                    "test_file": "tests/integration/proxy-streaming.test.ts",
+                    "test_cases": [
+                      "TC-S07: client disconnect aborts upstream and skips recordUsage",
+                      "TC-S08: upstream mid-stream disconnect closes client stream cleanly",
+                      "TC-S09: malformed SSE line does not truncate stream",
+                      "TC-S10: multiple events in single chunk parsed correctly by line buffer"
+                    ],
+                    "test_command": "cd /Users/asd/demo/openclaw-token-server && bun test tests/integration/proxy-streaming.test.ts"
+                  }
+                }
+              ],
+              "parallel": true
+            }
+          ],
+          "total_tasks": 4,
+          "estimated_waves": 3,
+          "verification": {
+            "unit_tests": [
+              "cd /Users/asd/demo/openclaw-token-server && bun test tests/unit/sse-parser.test.ts"
+            ],
+            "integration_tests": [
+              "cd /Users/asd/demo/openclaw-token-server && bun test tests/integration/proxy.test.ts",
+              "cd /Users/asd/demo/openclaw-token-server && bun test tests/integration/proxy-streaming.test.ts"
+            ],
+            "all": [
+              "cd /Users/asd/demo/openclaw-token-server && bun test"
+            ]
+          }
+        }
+      },
+      "s4": { "status": "completed" },
+      "s5": { "status": "completed" },
+      "s6": { "status": "completed" },
+      "s7": { "status": "completed" }
+    }
+  }
+}
